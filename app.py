@@ -5,8 +5,8 @@ from datetime import datetime
 
 # --- CONFIGURACION DE LA PAGINA ---
 st.set_page_config(
-    page_title="FITSTORE SUPPLEMENTS- Control de Stock",
-    page_icon="💊",
+    page_title="Fit Store Supplements - Control de Stock",
+    page_icon="💪",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -32,43 +32,21 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 if 'productos' not in st.session_state:
-    st.session_state['productos'] = [
-        {
-            "id": "SUP-0001",
-            "Nombre": "SPORT Creatina + Electrolitos",
-	"Marca": "ENA",
-            "Categoria": "Creatinas",
-            "Sabor": "Pink Lemonade",
-            "Presentacion": "300 g",
-            "Stock_central": 45,
-            "Alem": 10,
-            "San Javier": 8,
-            "Hul Gym": 12,
-            "Stock_minimo": 1
-        }
-    ]
+    st.session_state['productos'] = []
 
 if 'historial_movimientos' not in st.session_state:
-    st.session_state['historial_movimientos'] = [
-        {
-            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
-            "tipo": "Ingreso Inicial",
-            "producto": "Whey Protein 100% Isolate",
-            "cantidad": 75,
-            "destino": "Todos los puntos"
-        }
-    ]
+    st.session_state['historial_movimientos'] = []
 
 UBICACIONES = {
     "Deposito Central": "stock_central",
-    "Local 1 (Centro)": "local_1",
-    "Local 2 (Zona Norte)": "local_2",
-    "Local 3 (Shopping)": "local_3"
+    "Local Alem": "local_1",
+    "Local San Javier": "local_2",
+    "Hulk Gym": "local_3"
 }
 
-CATEGORIAS = ["Proteinas", "Creatina", "Pre-Entreno", "Aminoacidos (BCAA)", "Vitaminas", "Accesorios"]
+CATEGORIAS = ["Proteinas", "Creatina", "Pre-Entreno", "Aminoacidos (BCAA)", "Vitaminas", "Otros", "Magnesio", "Colageno"]
 
-st.sidebar.title("💊 Suplix Stock Manager")
+st.sidebar.title("💪 Fit Store Supplements")
 st.sidebar.markdown("---")
 menu = st.sidebar.radio(
     "Navegacion",
@@ -80,7 +58,7 @@ st.sidebar.info("💡 **Consejo:** El Stock Total se calcula sumando automaticam
 
 if menu == "📊 Dashboard General":
     st.title("📊 Panel de Control General")
-    st.markdown("Vista global del inventario en el Deposito Central y los 3 Puntos de Venta.")
+    st.markdown("Vista global del inventario en el Deposito Central y los Puntos de Venta.")
 
     df = pd.DataFrame(st.session_state['productos'])
     
@@ -99,11 +77,11 @@ if menu == "📊 Dashboard General":
         with col2:
             st.metric("🏢 Deposito Central", f"{total_central} un.")
         with col3:
-            st.metric("🏬 Local 1", f"{total_l1} un.")
+            st.metric("🏬 Local Alem", f"{total_l1} un.")
         with col4:
-            st.metric("🏬 Local 2", f"{total_l2} un.")
+            st.metric("🏬 Local San Javier", f"{total_l2} un.")
         with col5:
-            st.metric("🏬 Local 3", f"{total_l3} un.")
+            st.metric("🏋️‍♂️ Hulk Gym", f"{total_l3} un.")
 
         st.markdown("---")
 
@@ -192,7 +170,7 @@ elif menu == "📥 Ingreso de Mercaderia":
 
 elif menu == "🔄 Transferir entre Locales":
     st.title("🔄 Transferencia de Stock")
-    st.markdown("Mueve mercaderia desde el **Deposito Central** hacia cualquiera de los 3 Puntos de Venta.")
+    st.markdown("Mueve mercaderia desde el **Deposito Central** hacia cualquiera de los Puntos de Venta.")
 
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
@@ -203,7 +181,7 @@ elif menu == "🔄 Transferir entre Locales":
             
             prod_actual = next((p for p in st.session_state['productos'] if p['id'] == prod_id), None)
             
-            destino_nombre = st.selectbox("Enviar hacia:", ["Local 1 (Centro)", "Local 2 (Zona Norte)", "Local 3 (Shopping)"])
+            destino_nombre = st.selectbox("Enviar hacia:", ["Local Alem", "Local San Javier", "Hulk Gym"])
             cantidad_trans = st.number_input("Cantidad a transferir:", min_value=1, step=1, value=5)
             
             submit_trans = st.form_submit_button("Ejecutar Transferencia")
@@ -235,7 +213,7 @@ elif menu == "🛒 Registrar Venta":
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
         with st.form("form_venta"):
-            punto_venta = st.selectbox("Punto de Venta donde se efectua la venta:", ["Local 1 (Centro)", "Local 2 (Zona Norte)", "Local 3 (Shopping)", "Deposito Central"])
+            punto_venta = st.selectbox("Punto de Venta donde se efectua la venta:", ["Local Alem", "Local San Javier", "Hulk Gym", "Deposito Central"])
             key_pv = UBICACIONES[punto_venta]
             
             opciones_prod = {f"{row['nombre']} ({row['presentacion']}) - Stock en {punto_venta}: {row[key_pv]}": row['id'] for index, row in df.iterrows()}
@@ -284,13 +262,13 @@ elif menu == "➕ Nuevo Producto":
         st.markdown("### Stock Inicial por Ubicacion")
         col_s1, col_s2, col_s3, col_s4 = st.columns(4)
         with col_s1:
-            init_central = st.number_input("Deposito Central", min_value=0, value=20, step=1)
+            init_central = st.number_input("Deposito Central", min_value=0, value=0, step=1)
         with col_s2:
-            init_l1 = st.number_input("Local 1", min_value=0, value=5, step=1)
+            init_l1 = st.number_input("Local Alem", min_value=0, value=0, step=1)
         with col_s3:
-            init_l2 = st.number_input("Local 2", min_value=0, value=5, step=1)
+            init_l2 = st.number_input("Local San Javier", min_value=0, value=0, step=1)
         with col_s4:
-            init_l3 = st.number_input("Local 3", min_value=0, value=5, step=1)
+            init_l3 = st.number_input("Hulk Gym", min_value=0, value=0, step=1)
 
         submit_nuevo = st.form_submit_button("Guardar Nuevo Producto")
 
@@ -339,7 +317,7 @@ elif menu == "💾 Respaldos (Backup)":
         st.download_button(
             label="📥 Descargar Backup (JSON)",
             data=json_str,
-            file_name=f"suplix_backup_{datetime.now().strftime('%Y-%m-%d')}.json",
+            file_name=f"fitstore_backup_{datetime.now().strftime('%Y-%m-%d')}.json",
             mime="application/json"
         )
 
