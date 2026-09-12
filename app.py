@@ -53,7 +53,7 @@ menu = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info("💡 **Precios:** Alem y San Javier usan el Precio Base. Hulk Gym (consignación) aplica un recargo automático del +10%.")
+st.sidebar.info("💡 **Precios:** Alem y San Javier usan el Precio Base. Hulk Gym (consignación) calcula su precio como (Precio Base / 0,9).")
 
 if menu == "📊 Dashboard General":
     st.title("📊 Panel de Control General")
@@ -63,7 +63,7 @@ if menu == "📊 Dashboard General":
     
     if not df.empty:
         df['Stock Total'] = df['alem'] + df['san_javier'] + df['hulk_gym']
-        df['Precio Hulk Gym'] = df['precio_base'] * 1.10
+        df['Precio Hulk Gym'] = (df['precio_base'] / 0.9).round(2)
         
         total_alem = df['alem'].sum()
         total_san_javier = df['san_javier'].sum()
@@ -85,29 +85,30 @@ if menu == "📊 Dashboard General":
         st.subheader("⚠️ Alertas de Stock Bajo")
         alertas = []
         for index, row in df.iterrows():
-            for loc_nombre, loc_key in UBICACIONES.items():
-                if row[loc_key] <= row['stock_minimo']:
-                    alertas.append({
-                        "Marca": row.get('marca', 'Sin marca'),
-                        "Producto": row['nombre'],
-                        "Presentacion": row['presentacion'],
-                        "Ubicacion": loc_nombre,
-                        "Stock Actual": row[loc_key],
-                        "Minimo Requerido": row['stock_minimo']
-                    })
+            if row['stock_minimo'] > 0:
+                for loc_nombre, loc_key in UBICACIONES.items():
+                    if row[loc_key] <= row['stock_minimo']:
+                        alertas.append({
+                            "Marca": row.get('marca', 'Sin marca'),
+                            "Producto": row['nombre'],
+                            "Presentacion": row['presentacion'],
+                            "Ubicacion": loc_nombre,
+                            "Stock Actual": row[loc_key],
+                            "Minimo Requerido": row['stock_minimo']
+                        })
         
         if alertas:
             df_alertas = pd.DataFrame(alertas)
             st.dataframe(df_alertas, use_container_width=True, hide_index=True)
         else:
-            st.success("¡Excelente! No hay productos con stock critico en ninguna ubicacion.")
+            st.success("¡Excelente! No hay productos con stock critico o activo con alertas pendientes.")
 
         st.markdown("---")
         st.subheader("📋 Resumen de Precios y Stock por Producto")
         df_resumen = df.copy()
         df_resumen['Precio Hulk Gym'] = df_resumen['Precio Hulk Gym'].round(2)
-        columnas_resumen = ['id', 'marca', 'nombre', 'categoria', 'presentacion', 'precio_base', 'Precio Hulk Gym', 'alem', 'san_javier', 'hulk_gym', 'Stock Total']
-        vista_resumen = df_resumen[[col for col in columnas_resumen if col in df_resumen.columns]].rename(columns={'precio_base': 'Precio Base (Alem/S.Javier)'})
+        columnas_resumen = ['id', 'marca', 'nombre', 'categoria', 'presentacion', 'precio_base', 'Precio Hulk Gym', 'alem', 'san_javier', 'hulk_gym', 'Stock Total', 'stock_minimo']
+        vista_resumen = df_resumen[[col for col in columnas_resumen if col in df_resumen.columns]].rename(columns={'precio_base': 'Precio Base (Alem/S.Javier)', 'stock_minimo': 'Stock Mínimo'})
         st.dataframe(vista_resumen, use_container_width=True, hide_index=True)
 
     else:
@@ -120,7 +121,7 @@ elif menu == "📦 Inventario Completo":
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
         df['Stock Total'] = df['alem'] + df['san_javier'] + df['hulk_gym']
-        df['Precio Hulk Gym'] = (df['precio_base'] * 1.10).round(2)
+        df['Precio Hulk Gym'] = (df['precio_base'] / 0.9).round(2)
         
         col_f1, col_f2 = st.columns(2)
         with col_f1:
@@ -139,7 +140,7 @@ elif menu == "📦 Inventario Completo":
             df_filtrado = df_filtrado[df_filtrado['categoria'] == cat_filtro]
 
         columnas_inv = ['id', 'marca', 'nombre', 'categoria', 'sabor', 'presentacion', 'precio_base', 'Precio Hulk Gym', 'alem', 'san_javier', 'hulk_gym', 'Stock Total', 'stock_minimo']
-        df_inv_view = df_filtrado[[col for col in columnas_inv if col in df_filtrado.columns]].rename(columns={'precio_base': 'Precio Base (Alem/S.Javier)'})
+        df_inv_view = df_filtrado[[col for col in columnas_inv if col in df_filtrado.columns]].rename(columns={'precio_base': 'Precio Base (Alem/S.Javier)', 'stock_minimo': 'Stock Mínimo'})
         st.dataframe(df_inv_view, use_container_width=True, hide_index=True)
     else:
         st.info("No hay productos registrados.")
@@ -240,9 +241,9 @@ elif menu == "🛒 Registrar Venta":
             
             cantidad_venta = st.number_input("Cantidad vendida:", min_value=1, step=1, value=1)
             
-            # Cálculo de precio unitario según ubicación
+            # Cálculo de precio unitario según ubicación (Hulk Gym = precio_base / 0.9)
             if prod_actual:
-                precio_unitario = prod_actual['precio_base'] * 1.10 if punto_venta == "Hulk Gym" else prod_actual['precio_base']
+                precio_unitario = (prod_actual['precio_base'] / 0.9) if punto_venta == "Hulk Gym" else prod_actual['precio_base']
                 total_venta = precio_unitario * cantidad_venta
                 st.info(f"💵 **Precio unitario aplicado en {punto_venta}:** ${precio_unitario:,.2f} | **Total a cobrar:** ${total_venta:,.2f}")
 
@@ -268,7 +269,7 @@ elif menu == "🛒 Registrar Venta":
 
 elif menu == "➕ Nuevo Producto":
     st.title("➕ Alta de Nuevo Suplemento")
-    st.markdown("Agrega un nuevo producto especificando su precio base (Alem / San Javier) y su stock inicial.")
+    st.markdown("Agrega un nuevo producto especificando su precio base y opción de stock mínimo (0 para desactivar alertas).")
 
     with st.form("form_nuevo_prod"):
         col1, col2 = st.columns(2)
@@ -280,7 +281,7 @@ elif menu == "➕ Nuevo Producto":
         with col2:
             sabor = st.text_input("Sabor:", "Chocolate")
             presentacion = st.text_input("Presentacion (Ej: 900g, 2kg, 60 caps):", "900 g")
-            stock_minimo = st.number_input("Alerta de Stock Minimo por local:", min_value=1, value=5, step=1)
+            stock_minimo = st.number_input("Alerta de Stock Minimo por local (0 = Sin control):", min_value=0, value=0, step=1)
             
         id_prod = st.text_input("Codigo o SKU unico:", f"SUP-{len(st.session_state['productos'])+1:03d}")
 
