@@ -87,6 +87,7 @@ if menu == "📊 Dashboard General":
             for loc_nombre, loc_key in UBICACIONES.items():
                 if row[loc_key] <= row['stock_minimo']:
                     alertas.append({
+                        "Marca": row.get('marca', 'Sin marca'),
                         "Producto": row['nombre'],
                         "Presentacion": row['presentacion'],
                         "Ubicacion": loc_nombre,
@@ -102,7 +103,8 @@ if menu == "📊 Dashboard General":
 
         st.markdown("---")
         st.subheader("📋 Resumen Rapido por Producto")
-        vista_resumen = df[['id', 'nombre', 'categoria', 'sabor', 'presentacion', 'alem', 'san_javier', 'hulk_gym', 'Stock Total']]
+        columnas_resumen = ['id', 'marca', 'nombre', 'categoria', 'sabor', 'presentacion', 'alem', 'san_javier', 'hulk_gym', 'Stock Total']
+        vista_resumen = df[[col for col in columnas_resumen if col in df.columns]]
         st.dataframe(vista_resumen, use_container_width=True, hide_index=True)
 
     else:
@@ -118,17 +120,22 @@ elif menu == "📦 Inventario Completo":
         
         col_f1, col_f2 = st.columns(2)
         with col_f1:
-            busqueda = st.text_input("🔍 Buscar por nombre de producto:", "")
+            busqueda = st.text_input("🔍 Buscar por nombre o marca de producto:", "")
         with col_f2:
             cat_filtro = st.selectbox("Filtrar por categoria:", ["Todas"] + CATEGORIAS)
 
         df_filtrado = df.copy()
         if busqueda:
-            df_filtrado = df_filtrado[df_filtrado['nombre'].str.contains(busqueda, case=False, na=False)]
+            criterio = busqueda.lower()
+            df_filtrado = df_filtrado[
+                df_filtrado['nombre'].str.lower().str.contains(criterio, na=False) | 
+                df_filtrado['marca'].str.lower().str.contains(criterio, na=False)
+            ]
         if cat_filtro != "Todas":
             df_filtrado = df_filtrado[df_filtrado['categoria'] == cat_filtro]
 
-        st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
+        columnas_inv = ['id', 'marca', 'nombre', 'categoria', 'sabor', 'presentacion', 'alem', 'san_javier', 'hulk_gym', 'Stock Total', 'stock_minimo']
+        st.dataframe(df_filtrado[[col for col in columnas_inv if col in df_filtrado.columns]], use_container_width=True, hide_index=True)
     else:
         st.info("No hay productos registrados.")
 
@@ -139,7 +146,7 @@ elif menu == "📥 Ingreso de Mercaderia":
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
         with st.form("form_ingreso"):
-            opciones_prod = {f"{row['nombre']} ({row['presentacion']} - {row['sabor']}) [ID: {row['id']}]": row['id'] for index, row in df.iterrows()}
+            opciones_prod = {f"[{row.get('marca', 'Genérica')}] {row['nombre']} ({row['presentacion']} - {row['sabor']}) [ID: {row['id']}]": row['id'] for index, row in df.iterrows()}
             prod_seleccionado_str = st.selectbox("Seleccionar Producto:", list(opciones_prod.keys()))
             prod_id = opciones_prod[prod_seleccionado_str]
             
@@ -158,7 +165,7 @@ elif menu == "📥 Ingreso de Mercaderia":
                         st.session_state['historial_movimientos'].insert(0, {
                             "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
                             "tipo": "Ingreso Proveedor",
-                            "producto": p['nombre'],
+                            "producto": f"{p.get('marca', '')} {p['nombre']}".strip(),
                             "cantidad": cantidad_ingreso,
                             "destino": f"{destino_ingreso} (+{cantidad_ingreso})"
                         })
@@ -181,7 +188,7 @@ elif menu == "🔄 Transferir entre Locales":
             destino_nombre = st.selectbox("Destino (Enviar hacia):", destinos_disponibles)
             key_destino = UBICACIONES[destino_nombre]
 
-            opciones_prod = {f"{row['nombre']} ({row['presentacion']}) - Stock en {origen_nombre}: {row[key_origen]}": row['id'] for index, row in df.iterrows()}
+            opciones_prod = {f"[{row.get('marca', 'Genérica')}] {row['nombre']} ({row['presentacion']}) - Stock en {origen_nombre}: {row[key_origen]}": row['id'] for index, row in df.iterrows()}
             prod_seleccionado_str = st.selectbox("Seleccionar Producto:", list(opciones_prod.keys()))
             prod_id = opciones_prod[prod_seleccionado_str]
             
@@ -199,7 +206,7 @@ elif menu == "🔄 Transferir entre Locales":
                     st.session_state['historial_movimientos'].insert(0, {
                         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         "tipo": "Transferencia",
-                        "producto": prod_actual['nombre'],
+                        "producto": f"{prod_actual.get('marca', '')} {prod_actual['nombre']}".strip(),
                         "cantidad": cantidad_trans,
                         "destino": f"{origen_nombre} ➔ {destino_nombre}"
                     })
@@ -220,7 +227,7 @@ elif menu == "🛒 Registrar Venta":
             punto_venta = st.selectbox("Punto de Venta donde se efectua la venta:", list(UBICACIONES.keys()))
             key_pv = UBICACIONES[punto_venta]
             
-            opciones_prod = {f"{row['nombre']} ({row['presentacion']}) - Stock en {punto_venta}: {row[key_pv]}": row['id'] for index, row in df.iterrows()}
+            opciones_prod = {f"[{row.get('marca', 'Genérica')}] {row['nombre']} ({row['presentacion']}) - Stock en {punto_venta}: {row[key_pv]}": row['id'] for index, row in df.iterrows()}
             prod_seleccionado_str = st.selectbox("Seleccionar Producto:", list(opciones_prod.keys()))
             prod_id = opciones_prod[prod_seleccionado_str]
             
@@ -237,7 +244,7 @@ elif menu == "🛒 Registrar Venta":
                     st.session_state['historial_movimientos'].insert(0, {
                         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         "tipo": "Venta",
-                        "producto": prod_actual['nombre'],
+                        "producto": f"{prod_actual.get('marca', '')} {prod_actual['nombre']}".strip(),
                         "cantidad": cantidad_venta,
                         "destino": f"Venta en {punto_venta}"
                     })
@@ -255,13 +262,15 @@ elif menu == "➕ Nuevo Producto":
     with st.form("form_nuevo_prod"):
         col1, col2 = st.columns(2)
         with col1:
+            marca = st.text_input("Marca del Suplemento (Ej: Star Nutrition, ENA):", "Star Nutrition")
             nombre = st.text_input("Nombre del Suplemento:", "Whey Gold Standard")
             categoria = st.selectbox("Categoria:", CATEGORIAS)
-            sabor = st.text_input("Sabor:", "Chocolate")
         with col2:
+            sabor = st.text_input("Sabor:", "Chocolate")
             presentacion = st.text_input("Presentacion (Ej: 900g, 2kg, 60 caps):", "900 g")
             stock_minimo = st.number_input("Alerta de Stock Minimo por local:", min_value=1, value=5, step=1)
-            id_prod = st.text_input("Codigo o SKU unico:", f"SUP-{len(st.session_state['productos'])+1:03d}")
+            
+        id_prod = st.text_input("Codigo o SKU unico:", f"SUP-{len(st.session_state['productos'])+1:03d}")
 
         st.markdown("### Stock Inicial por Ubicacion")
         col_s1, col_s2, col_s3 = st.columns(3)
@@ -280,10 +289,11 @@ elif menu == "➕ Nuevo Producto":
             else:
                 nuevo = {
                     "id": id_prod,
-                    "nombre": nombre,
+                    "marca": marca.strip(),
+                    "nombre": nombre.strip(),
                     "categoria": categoria,
-                    "sabor": sabor,
-                    "presentacion": presentacion,
+                    "sabor": sabor.strip(),
+                    "presentacion": presentacion.strip(),
                     "alem": init_alem,
                     "san_javier": init_san_javier,
                     "hulk_gym": init_hulk,
@@ -293,11 +303,11 @@ elif menu == "➕ Nuevo Producto":
                 st.session_state['historial_movimientos'].insert(0, {
                     "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "tipo": "Alta Producto",
-                    "producto": nombre,
+                    "producto": f"{marca} {nombre}".strip(),
                     "cantidad": init_alem + init_san_javier + init_hulk,
                     "destino": "Stock Inicial Global"
                 })
-                st.success(f"¡Producto '{nombre}' creado exitosamente!")
+                st.success(f"¡Producto '{marca} - {nombre}' creado exitosamente!")
 
 elif menu == "💾 Respaldos (Backup)":
     st.title("💾 Gestion de Respaldos de Datos")
