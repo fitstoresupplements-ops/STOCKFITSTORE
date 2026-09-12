@@ -1,5 +1,4 @@
-﻿
-from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta
 import json
 import pandas as pd
 import streamlit as st
@@ -175,6 +174,13 @@ elif menu == "📦 Inventario Completo":
     df["Stock Total"] = df["alem"] + df["san_javier"] + df["hulk_gym"]
     df["Precio Hulk Gym"] = (df["precio_base"] / 0.9).round(2)
 
+    vista_ubicacion = st.radio(
+        "Filtrar vista por ubicación:",
+        ["Inventario Total", "Alem", "San Javier", "Hulk Gym"],
+        horizontal=True,
+    )
+    st.markdown("---")
+
     col_f1, col_f2 = st.columns(2)
     with col_f1:
       busqueda = st.text_input("🔍 Buscar por nombre o marca de producto:", "")
@@ -191,27 +197,68 @@ elif menu == "📦 Inventario Completo":
     if cat_filtro != "Todas":
       df_filtrado = df_filtrado[df_filtrado["categoria"] == cat_filtro]
 
-    columnas_inv = [
-        "id",
-        "marca",
-        "nombre",
-        "categoria",
-        "sabor",
-        "presentacion",
-        "precio_base",
-        "Precio Hulk Gym",
-        "alem",
-        "san_javier",
-        "hulk_gym",
-        "Stock Total",
-        "stock_minimo",
-    ]
+    if vista_ubicacion == "Inventario Total":
+      columnas_inv = [
+          "id",
+          "marca",
+          "nombre",
+          "categoria",
+          "sabor",
+          "presentacion",
+          "precio_base",
+          "Precio Hulk Gym",
+          "alem",
+          "san_javier",
+          "hulk_gym",
+          "Stock Total",
+          "stock_minimo",
+      ]
+    elif vista_ubicacion == "Alem":
+      columnas_inv = [
+          "id",
+          "marca",
+          "nombre",
+          "categoria",
+          "sabor",
+          "presentacion",
+          "precio_base",
+          "alem",
+          "stock_minimo",
+      ]
+    elif vista_ubicacion == "San Javier":
+      columnas_inv = [
+          "id",
+          "marca",
+          "nombre",
+          "categoria",
+          "sabor",
+          "presentacion",
+          "precio_base",
+          "san_javier",
+          "stock_minimo",
+      ]
+    elif vista_ubicacion == "Hulk Gym":
+      columnas_inv = [
+          "id",
+          "marca",
+          "nombre",
+          "categoria",
+          "sabor",
+          "presentacion",
+          "Precio Hulk Gym",
+          "hulk_gym",
+          "stock_minimo",
+      ]
+
     df_inv_view = df_filtrado[
         [col for col in columnas_inv if col in df_filtrado.columns]
     ].rename(
         columns={
             "precio_base": "Precio Base (Alem/S.Javier)",
             "stock_minimo": "Stock Mínimo",
+            "alem": "Stock en Alem",
+            "san_javier": "Stock en San Javier",
+            "hulk_gym": "Stock en Hulk Gym",
         }
     )
     st.dataframe(df_inv_view, use_container_width=True, hide_index=True)
