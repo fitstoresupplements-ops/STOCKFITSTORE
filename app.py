@@ -1,11 +1,11 @@
 ﻿import streamlit as st
 import pandas as pd
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # --- CONFIGURACION DE LA PAGINA ---
 st.set_page_config(
-    page_title="Fit Store Supplements - Control de Stock y Precios",
+    page_title="Fit Store Supplements - Control Integral",
     page_icon="💪",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -37,6 +37,9 @@ if 'productos' not in st.session_state:
 if 'historial_movimientos' not in st.session_state:
     st.session_state['historial_movimientos'] = []
 
+if 'eventos_calendario' not in st.session_state:
+    st.session_state['eventos_calendario'] = []
+
 UBICACIONES = {
     "Alem": "alem",
     "San Javier": "san_javier",
@@ -49,11 +52,22 @@ st.sidebar.title("💪 Fit Store Supplements")
 st.sidebar.markdown("---")
 menu = st.sidebar.radio(
     "Navegacion",
-    ["📊 Dashboard General", "📦 Inventario Completo", "📥 Ingreso de Mercaderia", "🔄 Transferir entre Locales", "🛒 Registrar Venta", "➕ Nuevo Producto", "💾 Respaldos (Backup)"]
+    [
+        "📊 Dashboard General", 
+        "📦 Inventario Completo", 
+        "📥 Ingreso de Mercaderia", 
+        "🔄 Transferir entre Locales", 
+        "🛒 Registrar Venta", 
+        "➕ Nuevo Producto", 
+        "✏️ Modificar Precios",
+        "📈 Estadísticas de Ventas",
+        "📅 Calendario y Eventos",
+        "💾 Respaldos (Backup)"
+    ]
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info("💡 **Precios:** Alem y San Javier usan el Precio Base. Hulk Gym (consignación) calcula su precio como (Precio Base / 0,9).")
+st.sidebar.info("💡 **Precios:** Alem y San Javier usan Precio Base. Hulk Gym calcula su precio como (Precio Base / 0,9). Stock mínimo 0 deshabilita alertas.")
 
 if menu == "📊 Dashboard General":
     st.title("📊 Panel de Control General")
@@ -173,7 +187,8 @@ elif menu == "📥 Ingreso de Mercaderia":
                             "tipo": "Ingreso Proveedor",
                             "producto": f"{p.get('marca', '')} {p['nombre']}".strip(),
                             "cantidad": cantidad_ingreso,
-                            "destino": f"{destino_ingreso} (+{cantidad_ingreso})"
+                            "destino": f"{destino_ingreso} (+{cantidad_ingreso})",
+                            "monto": 0.0
                         })
                         st.success(f"¡Ingreso registrado con exito! Se sumaron {cantidad_ingreso} unidades de {p['nombre']} a {destino_ingreso}.")
                         break
@@ -214,7 +229,8 @@ elif menu == "🔄 Transferir entre Locales":
                         "tipo": "Transferencia",
                         "producto": f"{prod_actual.get('marca', '')} {prod_actual['nombre']}".strip(),
                         "cantidad": cantidad_trans,
-                        "destino": f"{origen_nombre} ➔ {destino_nombre}"
+                        "destino": f"{origen_nombre} ➔ {destino_nombre}",
+                        "monto": 0.0
                     })
                     st.success(f"¡Transferencia exitosa! Se enviaron {cantidad_trans} unidades de {origen_nombre} a {destino_nombre}.")
                     st.rerun()
@@ -241,11 +257,18 @@ elif menu == "🛒 Registrar Venta":
             
             cantidad_venta = st.number_input("Cantidad vendida:", min_value=1, step=1, value=1)
             
-            # Cálculo de precio unitario según ubicación (Hulk Gym = precio_base / 0.9)
+            # Cálculo de precio unitario y neto para el usuario
             if prod_actual:
-                precio_unitario = (prod_actual['precio_base'] / 0.9) if punto_venta == "Hulk Gym" else prod_actual['precio_base']
-                total_venta = precio_unitario * cantidad_venta
-                st.info(f"💵 **Precio unitario aplicado en {punto_venta}:** ${precio_unitario:,.2f} | **Total a cobrar:** ${total_venta:,.2f}")
+                if punto_venta == "Hulk Gym":
+                    precio_publico = prod_actual['precio_base'] / 0.9
+                    neto_ingreso = prod_actual['precio_base'] # Ingreso real para vos (precio público menos el 10%)
+                    total_venta = precio_publico * cantidad_venta
+                    total_neto = neto_ingreso * cantidad_venta
+                    st.info(f"🏋️‍♂️ **Hulk Gym (Precio Público):** ${precio_publico:,.2f} | **Tu Ingreso Real (Neto -10%):** ${neto_ingreso:,.2f} c/u\n\n💵 **Total a cobrar al cliente:** ${total_venta:,.2f} | **Tu ingreso neto:** ${total_neto:,.2f}")
+                else:
+                    precio_unitario = prod_actual['precio_base']
+                    total_venta = precio_unitario * cantidad_venta
+                    st.info(f"💵 **Precio unitario en {punto_venta}:** ${precio_unitario:,.2f} | **Total:** ${total_venta:,.2f}")
 
             submit_venta = st.form_submit_button("Registrar Venta")
             
@@ -253,14 +276,23 @@ elif menu == "🛒 Registrar Venta":
                 if prod_actual and prod_actual[key_pv] >= cantidad_venta:
                     prod_actual[key_pv] -= cantidad_venta
                     
+                    # Si es en Hulk Gym, el monto real que te ingresa es el neto (precio_base * cantidad)
+                    if punto_venta == "Hulk Gym":
+                        monto_registrado = (prod_actual['precio_base']) * cantidad_venta
+                        detalle_destino = f"Venta en Hulk Gym (${precio_publico * cantidad_venta:,.2f} público, neto tuyo: ${monto_registrado:,.2f})"
+                    else:
+                        monto_registrado = prod_actual['precio_base'] * cantidad_venta
+                        detalle_destino = f"Venta en {punto_venta} (${monto_registrado:,.2f})"
+
                     st.session_state['historial_movimientos'].insert(0, {
                         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         "tipo": "Venta",
                         "producto": f"{prod_actual.get('marca', '')} {prod_actual['nombre']}".strip(),
                         "cantidad": cantidad_venta,
-                        "destino": f"Venta en {punto_venta} (${total_venta:,.2f})"
+                        "destino": detalle_destino,
+                        "monto": monto_registrado
                     })
-                    st.success(f"¡Venta registrada con exito! Se descontaron {cantidad_venta} unidades en {punto_venta}. Total: ${total_venta:,.2f}")
+                    st.success(f"¡Venta registrada con exito! Se descontaron {cantidad_venta} unidades en {punto_venta}.")
                     st.rerun()
                 else:
                     st.error(f"Error: No hay suficiente stock en {punto_venta} para completar esta venta.")
@@ -319,23 +351,141 @@ elif menu == "➕ Nuevo Producto":
                     "tipo": "Alta Producto",
                     "producto": f"{marca} {nombre}".strip(),
                     "cantidad": init_alem + init_san_javier + init_hulk,
-                    "destino": "Stock Inicial Global"
+                    "destino": "Stock Inicial Global",
+                    "monto": 0.0
                 })
                 st.success(f"¡Producto '{marca} - {nombre}' creado exitosamente con Precio Base de ${precio_base:,.2f}!")
 
+elif menu == "✏️ Modificar Precios":
+    st.title("✏️ Modificación de Precios")
+    st.markdown("Actualiza el precio base de cualquier suplemento. Los precios se recalculan automáticamente para los puntos de venta.")
+
+    df = pd.DataFrame(st.session_state['productos'])
+    if not df.empty:
+        with st.form("form_modificar_precio"):
+            opciones_prod = {f"[{row.get('marca', 'Genérica')}] {row['nombre']} ({row['presentacion']}) - Actual: ${row['precio_base']:,.2f}": row['id'] for index, row in df.iterrows()}
+            prod_seleccionado_str = st.selectbox("Seleccionar Producto a Modificar:", list(opciones_prod.keys()))
+            prod_id = opciones_prod[prod_seleccionado_str]
+            
+            prod_actual = next((p for p in st.session_state['productos'] if p['id'] == prod_id), None)
+            
+            nuevo_precio_base = st.number_input("Nuevo Precio Base (Alem y San Javier):", min_value=0.0, value=float(prod_actual['precio_base']) if prod_actual else 0.0, step=100.0)
+            
+            submit_precio = st.form_submit_button("Actualizar Precio")
+            
+            if submit_precio:
+                if prod_actual:
+                    precio_anterior = prod_actual['precio_base']
+                    prod_actual['precio_base'] = nuevo_precio_base
+                    
+                    st.session_state['historial_movimientos'].insert(0, {
+                        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "tipo": "Modificación de Precio",
+                        "producto": f"{prod_actual.get('marca', '')} {prod_actual['nombre']}".strip(),
+                        "cantidad": 0,
+                        "destino": f"Precio Base: ${precio_anterior:,.2f} ➔ ${nuevo_precio_base:,.2f}",
+                        "monto": 0.0
+                    })
+                    st.success(f"¡Precio actualizado con éxito para {prod_actual['nombre']}! Nuevo precio base: ${nuevo_precio_base:,.2f}")
+                    st.rerun()
+    else:
+        st.warning("No hay productos registrados para modificar.")
+
+elif menu == "📈 Estadísticas de Ventas":
+    st.title("📈 Estadísticas y Rendimiento de Ventas")
+    st.markdown("Análisis financiero, histórico y comparativa de ventas (con descuento del 10% aplicado a ventas en Hulk Gym).")
+
+    ventas_hist = [m for m in st.session_state['historial_movimientos'] if m['tipo'] == "Venta"]
+
+    if ventas_hist:
+        df_v = pd.DataFrame(ventas_hist)
+        df_v['fecha_dt'] = pd.to_datetime(df_v['fecha'])
+        df_v['año_mes'] = df_v['fecha_dt'].dt.to_period('M')
+
+        ahora = datetime.now()
+        hace_7_dias = ahora - timedelta(days=7)
+        hace_30_dias = ahora - timedelta(days=30)
+
+        ventas_7d = df_v[df_v['fecha_dt'] >= hace_7_dias]
+        ventas_30d = df_v[df_v['fecha_dt'] >= hace_30_dias]
+
+        total_7d = ventas_7d['monto'].sum()
+        total_30d = ventas_30d['monto'].sum()
+        total_historico = df_v['monto'].sum()
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("🔥 Ingresos Netos (Últimos 7 Días)", f"${total_7d:,.2f}")
+        with col2:
+            st.metric("📅 Ingresos Netos (Últimos 30 días)", f"${total_30d:,.2f}")
+        with col3:
+            st.metric("💰 Facturación Neta Histórica", f"${total_historico:,.2f}")
+
+        st.markdown("---")
+
+        ventas_por_mes = df_v.groupby('año_mes')['monto'].sum().reset_index()
+        if not ventas_por_mes.empty:
+            max_fila = ventas_por_mes.loc[ventas_por_mes['monto'].idxmax()]
+            mes_mayor = str(max_fila['año_mes'])
+            monto_mayor = max_fila['monto']
+            st.success(f"🏆 **Mes de mayor facturación neta:** {mes_mayor} con un total de **${monto_mayor:,.2f}**.")
+
+        st.markdown("---")
+        st.subheader("📋 Detalle de Ventas Registradas (Ingreso Neto)")
+        st.dataframe(df_v[['fecha', 'producto', 'cantidad', 'destino', 'monto']].rename(columns={'monto': 'Ingreso Neto ($)'}), use_container_width=True, hide_index=True)
+    else:
+        st.info("Aún no hay ventas registradas para generar estadísticas.")
+
+elif menu == "📅 Calendario y Eventos":
+    st.title("📅 Calendario y Gestión de Eventos")
+    st.markdown("Programa entregas, cierres de caja, campañas de promoción (como CreaSale) o feriados.")
+
+    with st.form("form_evento"):
+        col_e1, col_e2 = st.columns(2)
+        with col_e1:
+            titulo_evento = st.text_input("Título del Evento / Tarea:", "Inicio Campaña CreaSale")
+            fecha_evento = st.date_input("Fecha:", datetime.now())
+        with col_e2:
+            categoria_evento = st.selectbox("Categoría:", ["Entrega San Javier", "Promoción / Campaña", "Reposición Proveedor", "Cierre de Caja / Mensual", "Otro"])
+            descripcion_evento = st.text_input("Notas / Descripción:", "Liquidación de stock de creatina")
+        
+        submit_evento = st.form_submit_button("Guardar Evento en Calendario")
+        if submit_evento:
+            if titulo_evento.strip() == "":
+                st.error("El título no puede estar vacío.")
+            else:
+                nuevo_evento = {
+                    "fecha": str(fecha_evento),
+                    "titulo": titulo_evento.strip(),
+                    "categoria": categoria_evento,
+                    "descripcion": descripcion_evento.strip()
+                }
+                st.session_state['eventos_calendario'].append(nuevo_evento)
+                st.success(f"¡Evento '{titulo_evento}' guardado para el {fecha_evento}!")
+
+    st.markdown("---")
+    st.subheader("📌 Agenda de Eventos Próximos")
+    if st.session_state['eventos_calendario']:
+        df_cal = pd.DataFrame(st.session_state['eventos_calendario'])
+        df_cal = df_cal.sort_values(by='fecha')
+        st.dataframe(df_cal, use_container_width=True, hide_index=True)
+    else:
+        st.info("No hay eventos agendados en el calendario todavía.")
+
 elif menu == "💾 Respaldos (Backup)":
     st.title("💾 Gestion de Respaldos de Datos")
-    st.markdown("Exporta o importa toda la informacion de tu inventario en un archivo JSON para mantener tus datos seguros.")
+    st.markdown("Exporta o importa toda la informacion de tu inventario, ventas y calendario en un archivo JSON.")
 
     col_exp, col_imp = st.columns(2)
 
     with col_exp:
         st.subheader("📤 Exportar Datos")
-        st.write("Descarga un archivo con todo el estado actual del stock y movimientos.")
+        st.write("Descarga un archivo con todo el estado actual del stock, movimientos y calendario.")
         
         datos_respaldo = {
             "productos": st.session_state['productos'],
-            "historial_movimientos": st.session_state['historial_movimientos']
+            "historial_movimientos": st.session_state['historial_movimientos'],
+            "eventos_calendario": st.session_state['eventos_calendario']
         }
         json_str = json.dumps(datos_respaldo, indent=4, ensure_ascii=False)
         
@@ -358,6 +508,8 @@ elif menu == "💾 Respaldos (Backup)":
                     if st.button("Confirmar Restauracion"):
                         st.session_state['productos'] = datos_cargados['productos']
                         st.session_state['historial_movimientos'] = datos_cargados['historial_movimientos']
+                        if "eventos_calendario" in datos_cargados:
+                            st.session_state['eventos_calendario'] = datos_cargados['eventos_calendario']
                         st.success("¡Datos restaurados con exito! Actualiza la pagina si es necesario.")
                 else:
                     st.error("El archivo no tiene el formato correcto.")
