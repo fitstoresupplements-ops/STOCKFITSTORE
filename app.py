@@ -32,7 +32,112 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 if 'productos' not in st.session_state:
-    st.session_state['productos'] = []
+    st.session_state['productos'] = [
+        {
+            "id": "SUP-001",
+            "marca": "Star Nutrition",
+            "nombre": "Whey Protein Premium",
+            "categoria": "Proteinas",
+            "sabor": "Chocolate",
+            "presentacion": "1 kg",
+            "precio_base": 45000.0,
+            "alem": 5,
+            "san_javier": 3,
+            "hulk_gym": 2,
+            "stock_minimo": 2
+        },
+        {
+            "id": "SUP-002",
+            "marca": "Star Nutrition",
+            "nombre": "Creatina Monohidrato",
+            "categoria": "Creatina",
+            "sabor": "Neutro",
+            "presentacion": "300 g",
+            "precio_base": 32000.0,
+            "alem": 8,
+            "san_javier": 4,
+            "hulk_gym": 5,
+            "stock_minimo": 2
+        },
+        {
+            "id": "SUP-003",
+            "marca": "ENA",
+            "nombre": "Whey X-Pro",
+            "categoria": "Proteinas",
+            "sabor": "Frutilla",
+            "presentacion": "1 kg",
+            "precio_base": 42000.0,
+            "alem": 4,
+            "san_javier": 2,
+            "hulk_gym": 3,
+            "stock_minimo": 1
+        },
+        {
+            "id": "SUP-004",
+            "marca": "ENA",
+            "nombre": "Creatine Creapure",
+            "categoria": "Creatina",
+            "sabor": "Neutro",
+            "presentacion": "250 g",
+            "precio_base": 38000.0,
+            "alem": 6,
+            "san_javier": 3,
+            "hulk_gym": 4,
+            "stock_minimo": 2
+        },
+        {
+            "id": "SUP-005",
+            "marca": "Star Nutrition",
+            "nombre": "Pre-Entreno Invasion",
+            "categoria": "Pre-Entreno",
+            "sabor": "Blue Raspberry",
+            "presentacion": "300 g",
+            "precio_base": 36000.0,
+            "alem": 4,
+            "san_javier": 2,
+            "hulk_gym": 2,
+            "stock_minimo": 1
+        },
+        {
+            "id": "SUP-006",
+            "marca": "Star Nutrition",
+            "nombre": "BCAA 2:1:1",
+            "categoria": "Aminoacidos (BCAA)",
+            "sabor": "Lemonade",
+            "presentacion": "300 g",
+            "precio_base": 30000.0,
+            "alem": 5,
+            "san_javier": 2,
+            "hulk_gym": 3,
+            "stock_minimo": 1
+        },
+        {
+            "id": "SUP-007",
+            "marca": "ENA",
+            "nombre": "Magnesio Citrato",
+            "categoria": "Magnesio",
+            "sabor": "Neutro",
+            "presentacion": "60 caps",
+            "precio_base": 18000.0,
+            "alem": 10,
+            "san_javier": 5,
+            "hulk_gym": 5,
+            "stock_minimo": 3
+        },
+        {
+            "id": "SUP-008",
+            "marca": "Star Nutrition",
+            "nombre": "Colageno Hidrolizado",
+            "categoria": "Colageno",
+            "sabor": "Frutilla",
+            "presentacion": "300 g",
+            "precio_base": 28000.0,
+            "alem": 6,
+            "san_javier": 3,
+            "hulk_gym": 2,
+            "stock_minimo": 2
+        }
+    ]
 
 if 'historial_movimientos' not in st.session_state:
     st.session_state['historial_movimientos'] = []
@@ -257,11 +362,10 @@ elif menu == "🛒 Registrar Venta":
             
             cantidad_venta = st.number_input("Cantidad vendida:", min_value=1, step=1, value=1)
             
-            # Cálculo de precio unitario y neto para el usuario
             if prod_actual:
                 if punto_venta == "Hulk Gym":
                     precio_publico = prod_actual['precio_base'] / 0.9
-                    neto_ingreso = prod_actual['precio_base'] # Ingreso real para vos (precio público menos el 10%)
+                    neto_ingreso = prod_actual['precio_base']
                     total_venta = precio_publico * cantidad_venta
                     total_neto = neto_ingreso * cantidad_venta
                     st.info(f"🏋️‍♂️ **Hulk Gym (Precio Público):** ${precio_publico:,.2f} | **Tu Ingreso Real (Neto -10%):** ${neto_ingreso:,.2f} c/u\n\n💵 **Total a cobrar al cliente:** ${total_venta:,.2f} | **Tu ingreso neto:** ${total_neto:,.2f}")
@@ -276,7 +380,6 @@ elif menu == "🛒 Registrar Venta":
                 if prod_actual and prod_actual[key_pv] >= cantidad_venta:
                     prod_actual[key_pv] -= cantidad_venta
                     
-                    # Si es en Hulk Gym, el monto real que te ingresa es el neto (precio_base * cantidad)
                     if punto_venta == "Hulk Gym":
                         monto_registrado = (prod_actual['precio_base']) * cantidad_venta
                         detalle_destino = f"Venta en Hulk Gym (${precio_publico * cantidad_venta:,.2f} público, neto tuyo: ${monto_registrado:,.2f})"
@@ -432,7 +535,9 @@ elif menu == "📈 Estadísticas de Ventas":
 
         st.markdown("---")
         st.subheader("📋 Detalle de Ventas Registradas (Ingreso Neto)")
-        st.dataframe(df_v[['fecha', 'producto', 'cantidad', 'destino', 'monto']].rename(columns={'monto': 'Ingreso Neto ($)'}), use_container_width=True, hide_index=True)
+        df_v_display = df_v[['fecha', 'producto', 'cantidad', 'destino', 'monto']].copy()
+        df_v_display['monto'] = df_v_display['monto'].round(2)
+        st.dataframe(df_v_display.rename(columns={'monto': 'Ingreso Neto ($)'}), use_container_width=True, hide_index=True)
     else:
         st.info("Aún no hay ventas registradas para generar estadísticas.")
 
@@ -520,6 +625,7 @@ st.markdown("---")
 with st.expander("📜 Ver Historial Reciente de Movimientos"):
     if st.session_state['historial_movimientos']:
         df_mov = pd.DataFrame(st.session_state['historial_movimientos'])
+        df_mov['monto'] = df_mov['monto'].round(2)
         st.dataframe(df_mov, use_container_width=True, hide_index=True)
     else:
         st.info("No hay movimientos registrados aun.")
