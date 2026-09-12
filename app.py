@@ -31,113 +31,54 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-if 'productos' not in st.session_state:
-    st.session_state['productos'] = [
-        {
-            "id": "SUP-001",
-            "marca": "Star Nutrition",
-            "nombre": "Whey Protein Premium",
-            "categoria": "Proteinas",
-            "sabor": "Chocolate",
-            "presentacion": "1 kg",
-            "precio_base": 45000.0,
-            "alem": 5,
-            "san_javier": 3,
-            "hulk_gym": 2,
-            "stock_minimo": 2
-        },
-        {
-            "id": "SUP-002",
-            "marca": "Star Nutrition",
-            "nombre": "Creatina Monohidrato",
-            "categoria": "Creatina",
-            "sabor": "Neutro",
-            "presentacion": "300 g",
-            "precio_base": 32000.0,
-            "alem": 8,
-            "san_javier": 4,
-            "hulk_gym": 5,
-            "stock_minimo": 2
-        },
-        {
-            "id": "SUP-003",
-            "marca": "ENA",
-            "nombre": "Whey X-Pro",
-            "categoria": "Proteinas",
-            "sabor": "Frutilla",
-            "presentacion": "1 kg",
-            "precio_base": 42000.0,
-            "alem": 4,
-            "san_javier": 2,
-            "hulk_gym": 3,
-            "stock_minimo": 1
-        },
-        {
-            "id": "SUP-004",
-            "marca": "ENA",
-            "nombre": "Creatine Creapure",
-            "categoria": "Creatina",
-            "sabor": "Neutro",
-            "presentacion": "250 g",
-            "precio_base": 38000.0,
-            "alem": 6,
-            "san_javier": 3,
-            "hulk_gym": 4,
-            "stock_minimo": 2
-        },
-        {
-            "id": "SUP-005",
-            "marca": "Star Nutrition",
-            "nombre": "Pre-Entreno Invasion",
-            "categoria": "Pre-Entreno",
-            "sabor": "Blue Raspberry",
-            "presentacion": "300 g",
-            "precio_base": 36000.0,
-            "alem": 4,
-            "san_javier": 2,
-            "hulk_gym": 2,
-            "stock_minimo": 1
-        },
-        {
-            "id": "SUP-006",
-            "marca": "Star Nutrition",
-            "nombre": "BCAA 2:1:1",
-            "categoria": "Aminoacidos (BCAA)",
-            "sabor": "Lemonade",
-            "presentacion": "300 g",
-            "precio_base": 30000.0,
-            "alem": 5,
-            "san_javier": 2,
-            "hulk_gym": 3,
-            "stock_minimo": 1
-        },
-        {
-            "id": "SUP-007",
-            "marca": "ENA",
-            "nombre": "Magnesio Citrato",
-            "categoria": "Magnesio",
-            "sabor": "Neutro",
-            "presentacion": "60 caps",
-            "precio_base": 18000.0,
-            "alem": 10,
-            "san_javier": 5,
-            "hulk_gym": 5,
-            "stock_minimo": 3
-        },
-        {
-            "id": "SUP-008",
-            "marca": "Star Nutrition",
-            "nombre": "Colageno Hidrolizado",
-            "categoria": "Colageno",
-            "sabor": "Frutilla",
-            "presentacion": "300 g",
-            "precio_base": 28000.0,
-            "alem": 6,
-            "san_javier": 3,
-            "hulk_gym": 2,
-            "stock_minimo": 2
-        }
-    ]
+# --- CARGA AUTOMÁTICA DESDE EXCEL (CON REGLA DE STOCK MÍNIMO) ---
+if 'productos' not in st.session_state or not st.session_state['productos']:
+    try:
+        df_excel = pd.read_excel("Hoja de cálculo sin título.xlsx", sheet_name="Hoja 1")
+        
+        productos_cargados = []
+        for idx, row in df_excel.iterrows():
+            prod_id = f"SUP-{idx+1:03d}"
+            nombre_prod = str(row['Producto'])
+            marca = str(row['Marca']).strip()
+            
+            # Clasificación automática de categorías
+            cat = "Otros"
+            if "CREATINA" in nombre_prod.upper():
+                cat = "Creatina"
+            elif "WHEY" in nombre_prod.upper() or "PROTEIN" in nombre_prod.upper() or "GAINER" in nombre_prod.upper():
+                cat = "Proteinas"
+            elif "MAGNESIO" in nombre_prod.upper():
+                cat = "Magnesio"
+            elif "COLLAGEN" in nombre_prod.upper() or "COLAGENO" in nombre_prod.upper():
+                cat = "Colageno"
+            elif "VITAMIN" in nombre_prod.upper() or "MULTIVITAMIN" in nombre_prod.upper():
+                cat = "Vitaminas"
+            elif "BCAA" in nombre_prod.upper() or "PRE" in nombre_prod.upper() or "DYNAMITE" in nombre_prod.upper():
+                cat = "Pre-Entreno" if "PRE" in nombre_prod.upper() or "DYNAMITE" in nombre_prod.upper() else "Aminoacidos (BCAA)"
+
+            # Regla de stock mínimo solicitada: 1 para creatinas, 0 para el resto
+            stock_min = 1 if "CREATINA" in nombre_prod.upper() else 0
+
+            productos_cargados.append({
+                "id": prod_id,
+                "marca": marca,
+                "nombre": nombre_prod,
+                "categoria": cat,
+                "sabor": "General / Varios",
+                "presentacion": "Estándar",
+                "precio_base": float(row['Precio base']),
+                "alem": int(row['Alem']),
+                "san_javier": int(row['San javier']),
+                "hulk_gym": int(row['Hulk gym']),
+                "stock_minimo": stock_min
+            })
+        
+        st.session_state['productos'] = productos_cargados
+    except Exception as e:
+        st.error(f"No se pudo cargar el archivo Excel automáticamente: {e}")
+        if 'productos' not in st.session_state:
+            st.session_state['productos'] = []
 
 if 'historial_movimientos' not in st.session_state:
     st.session_state['historial_movimientos'] = []
@@ -220,7 +161,7 @@ if menu == "📊 Dashboard General":
             df_alertas = pd.DataFrame(alertas)
             st.dataframe(df_alertas, use_container_width=True, hide_index=True)
         else:
-            st.success("¡Excelente! No hay productos con stock critico o activo con alertas pendientes.")
+            st.success("¡Excelente! No hay productos con stock crítico o activo con alertas pendientes.")
 
         st.markdown("---")
         st.subheader("📋 Resumen de Precios y Stock por Producto")
@@ -231,7 +172,7 @@ if menu == "📊 Dashboard General":
         st.dataframe(vista_resumen, use_container_width=True, hide_index=True)
 
     else:
-        st.warning("No hay productos cargados todavia. Dirigete a 'Nuevo Producto' para empezar.")
+        st.warning("No hay productos cargados todavía. Dirigete a 'Nuevo Producto' para empezar.")
 
 elif menu == "📦 Inventario Completo":
     st.title("📦 Inventario Detallado y Precios")
@@ -295,7 +236,7 @@ elif menu == "📥 Ingreso de Mercaderia":
                             "destino": f"{destino_ingreso} (+{cantidad_ingreso})",
                             "monto": 0.0
                         })
-                        st.success(f"¡Ingreso registrado con exito! Se sumaron {cantidad_ingreso} unidades de {p['nombre']} a {destino_ingreso}.")
+                        st.success(f"¡Ingreso registrado con éxito! Se sumaron {cantidad_ingreso} unidades de {p['nombre']} a {destino_ingreso}.")
                         break
     else:
         st.warning("Primero debes dar de alta al menos un producto.")
@@ -395,7 +336,7 @@ elif menu == "🛒 Registrar Venta":
                         "destino": detalle_destino,
                         "monto": monto_registrado
                     })
-                    st.success(f"¡Venta registrada con exito! Se descontaron {cantidad_venta} unidades en {punto_venta}.")
+                    st.success(f"¡Venta registrada con éxito! Se descontaron {cantidad_venta} unidades en {punto_venta}.")
                     st.rerun()
                 else:
                     st.error(f"Error: No hay suficiente stock en {punto_venta} para completar esta venta.")
@@ -433,7 +374,7 @@ elif menu == "➕ Nuevo Producto":
 
         if submit_nuevo:
             if nombre.strip() == "":
-                st.error("El nombre del producto no puede estar vacio.")
+                st.error("El nombre del producto no puede estar vacío.")
             else:
                 nuevo = {
                     "id": id_prod,
@@ -535,9 +476,7 @@ elif menu == "📈 Estadísticas de Ventas":
 
         st.markdown("---")
         st.subheader("📋 Detalle de Ventas Registradas (Ingreso Neto)")
-        df_v_display = df_v[['fecha', 'producto', 'cantidad', 'destino', 'monto']].copy()
-        df_v_display['monto'] = df_v_display['monto'].round(2)
-        st.dataframe(df_v_display.rename(columns={'monto': 'Ingreso Neto ($)'}), use_container_width=True, hide_index=True)
+        st.dataframe(df_v[['fecha', 'producto', 'cantidad', 'destino', 'monto']].rename(columns={'monto': 'Ingreso Neto ($)'}), use_container_width=True, hide_index=True)
     else:
         st.info("Aún no hay ventas registradas para generar estadísticas.")
 
@@ -615,7 +554,7 @@ elif menu == "💾 Respaldos (Backup)":
                         st.session_state['historial_movimientos'] = datos_cargados['historial_movimientos']
                         if "eventos_calendario" in datos_cargados:
                             st.session_state['eventos_calendario'] = datos_cargados['eventos_calendario']
-                        st.success("¡Datos restaurados con exito! Actualiza la pagina si es necesario.")
+                        st.success("¡Datos restaurados con éxito! Actualiza la página si es necesario.")
                 else:
                     st.error("El archivo no tiene el formato correcto.")
             except Exception as e:
@@ -625,7 +564,6 @@ st.markdown("---")
 with st.expander("📜 Ver Historial Reciente de Movimientos"):
     if st.session_state['historial_movimientos']:
         df_mov = pd.DataFrame(st.session_state['historial_movimientos'])
-        df_mov['monto'] = df_mov['monto'].round(2)
         st.dataframe(df_mov, use_container_width=True, hide_index=True)
     else:
-        st.info("No hay movimientos registrados aun.")
+        st.info("No hay movimientos registrados aún.")
