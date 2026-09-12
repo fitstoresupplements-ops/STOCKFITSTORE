@@ -5,7 +5,7 @@ from datetime import datetime
 
 # --- CONFIGURACION DE LA PAGINA ---
 st.set_page_config(
-    page_title="Suplix - Control de Stock",
+    page_title="FITSTORE SUPPLEMENTS- Control de Stock",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -34,40 +34,17 @@ st.markdown("""
 if 'productos' not in st.session_state:
     st.session_state['productos'] = [
         {
-            "id": "SUP-001",
-            "nombre": "Whey Protein 100% Isolate",
-            "categoria": "Proteinas",
-            "sabor": "Vainilla",
-            "presentacion": "1 kg",
-            "stock_central": 45,
-            "local_1": 10,
-            "local_2": 8,
-            "local_3": 12,
-            "stock_minimo": 5
-        },
-        {
-            "id": "SUP-002",
-            "nombre": "Creatina Monohidratada",
-            "categoria": "Creatina",
-            "sabor": "Neutro",
-            "presentacion": "300 g",
-            "stock_central": 60,
-            "local_1": 15,
-            "local_2": 20,
-            "local_3": 10,
-            "stock_minimo": 10
-        },
-        {
-            "id": "SUP-003",
-            "nombre": "Pre-Workout Explosion",
-            "categoria": "Pre-Entreno",
-            "sabor": "Frutos Rojos",
-            "presentacion": "250 g",
-            "stock_central": 25,
-            "local_1": 5,
-            "local_2": 4,
-            "local_3": 6,
-            "stock_minimo": 8
+            "id": "SUP-0001",
+            "Nombre": "SPORT Creatina + Electrolitos",
+	"Marca": "ENA",
+            "Categoria": "Creatinas",
+            "Sabor": "Pink Lemonade",
+            "Presentacion": "300 g",
+            "Stock_central": 45,
+            "Alem": 10,
+            "San Javier": 8,
+            "Hul Gym": 12,
+            "Stock_minimo": 1
         }
     ]
 
