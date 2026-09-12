@@ -66,6 +66,647 @@ menu = st.sidebar.radio(
     ]
 )
 
+[
+    {
+        "id": 1,
+        "marca": "ENA",
+        "producto": "SPORT Creatina + Electrolitos 300 GRS - Pink Lemonade - 300 GRS",
+        "precio_base": 28999.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 2,
+        "marca": "ENA",
+        "producto": "SPORT Creatina + Electrolitos 300 GRS - Blue Lemon - 300 GRS",
+        "precio_base": 28999.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 3,
+        "marca": "ENA",
+        "producto": "MULTIVITAMIN - 60 caps",
+        "precio_base": 18500.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 4,
+        "marca": "ENA",
+        "producto": "CITRATO DE MAGNESIO - 60 caps",
+        "precio_base": 15000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 5,
+        "marca": "ENA",
+        "producto": "CREATINA MICRONIZADA SABOR NEUTRO - 300 GRS",
+        "precio_base": 26999.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 6,
+        "marca": "ENA",
+        "producto": "WHEY PROTEIN TRUE MADE COOKIES & CREAM - 2,05 LB (930 GRS)",
+        "precio_base": 83000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 7,
+        "marca": "ENA",
+        "producto": "WHEY X PRO VAINILLA - 2 LB (907 GRS)",
+        "precio_base": 88000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 8,
+        "marca": "ENA",
+        "producto": "100% WHEY CHOCOLATE - 2 LIBRAS",
+        "precio_base": 64000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 9,
+        "marca": "GOLD NUTRITION",
+        "producto": "VITAMIN GOLD",
+        "precio_base": 16000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 10,
+        "marca": "GOLD NUTRITION",
+        "producto": "Omega 3 - Fish Oil - 30 caps",
+        "precio_base": 32000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 11,
+        "marca": "GOLD NUTRITION",
+        "producto": "Pre Work Gold",
+        "precio_base": 27000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 12,
+        "marca": "GOLD NUTRITION",
+        "producto": "Magnesium Citrate - 60 Caps",
+        "precio_base": 17000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 13,
+        "marca": "GOLD NUTRITION",
+        "producto": "Creatine Monohydrate - 300 g",
+        "precio_base": 22999.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 2,
+            "san_javier": 2,
+            "hulk_gym": 2
+        }
+    },
+    {
+        "id": 14,
+        "marca": "GOLD NUTRITION",
+        "producto": "100% Whey Protein Chocolate - 2 lbs",
+        "precio_base": 76000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 15,
+        "marca": "GOLD NUTRITION",
+        "producto": "100% Whey Protein Vainilla - 2 lbs",
+        "precio_base": 76000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 16,
+        "marca": "GOLD NUTRITION",
+        "producto": "100% Whey Protein Frutilla - 2 lbs",
+        "precio_base": 76000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 17,
+        "marca": "GOLD NUTRITION",
+        "producto": "Muscle Mass Gainer 5 LB - Gourmet Milk Chocolate",
+        "precio_base": 60000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 18,
+        "marca": "GOLD NUTRITION",
+        "producto": "Muscle Mass Gainer 5 LB - Gourmet Vainilla",
+        "precio_base": 60000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 19,
+        "marca": "GOOM",
+        "producto": "CREATNA GOMITAS 120  UNIDADES BLUEBERRY",
+        "precio_base": 28999.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 20,
+        "marca": "MUECAS",
+        "producto": "BARRAS PROTEICAS SPORT & CLUB",
+        "precio_base": 2000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 14,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 21,
+        "marca": "MYPROTEIN",
+        "producto": "Creatine Monohydrate - 250G",
+        "precio_base": 22499.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 2,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 22,
+        "marca": "ONE FIT",
+        "producto": "CREATINA MICRONIZADA 200 GRS NEUTRO",
+        "precio_base": 14500.0,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 23,
+        "marca": "STAR",
+        "producto": "MAGNESIO-FRUTOS-500 - 500 gr",
+        "precio_base": 36500.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 24,
+        "marca": "STAR",
+        "producto": "MAGNESIO-NEUTRO-500 - 500 gr",
+        "precio_base": 36500.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 25,
+        "marca": "STAR",
+        "producto": "COLLAGEN-LIMON-210 - 210 gr",
+        "precio_base": 23000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 1,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 26,
+        "marca": "STAR",
+        "producto": "COLLAGEN-FRUTOSROJOS-210 - 210 gr",
+        "precio_base": 23000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 27,
+        "marca": "STAR",
+        "producto": "BCAA 2000 X 120 CAPS - 120CAPS",
+        "precio_base": 21300.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 1,
+            "hulk_gym": 2
+        }
+    },
+    {
+        "id": 28,
+        "marca": "STAR",
+        "producto": "TNT-DYNAMITE ACAI POWER 240GRS - 240GRS",
+        "precio_base": 29900.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 29,
+        "marca": "STAR",
+        "producto": "TNT-DYNAMITE BLUE RAZ 240GRS - 240GRS",
+        "precio_base": 29900.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 30,
+        "marca": "STAR",
+        "producto": "TNT-DYNAMITE CITRUS SLUSH 240GRS - 240GRS",
+        "precio_base": 29900.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 31,
+        "marca": "STAR",
+        "producto": "TNT-DYNAMITE GRAPE ATTACK 240GRS - 240GRS",
+        "precio_base": 29900.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 32,
+        "marca": "STAR",
+        "producto": "MAGNESIO-500 - 60 caps",
+        "precio_base": 19000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 1,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 33,
+        "marca": "STAR",
+        "producto": "CREATINA MONOHIDRATO EEUU X 500 GRS - 500GRS",
+        "precio_base": 44499.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 34,
+        "marca": "STAR",
+        "producto": "CREATINA MONOHIDRATO EEUU X 300 GRS - 300GRS",
+        "precio_base": 27999.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 4,
+            "san_javier": 2,
+            "hulk_gym": 2
+        }
+    },
+    {
+        "id": 35,
+        "marca": "STAR",
+        "producto": "CREATINA MONOHIDRATO EEUU X 150 GRS - 150GRS",
+        "precio_base": 16999.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 1,
+            "san_javier": 1,
+            "hulk_gym": 2
+        }
+    },
+    {
+        "id": 36,
+        "marca": "STAR",
+        "producto": "CREATINA MONOHIDRATO EEUU X 300 GRS. DOYPACK - 300GRS",
+        "precio_base": 24999.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 1,
+            "san_javier": 1,
+            "hulk_gym": 3
+        }
+    },
+    {
+        "id": 37,
+        "marca": "STAR",
+        "producto": "PLATINUM WHEY PROTEIN VAINILLA X 2 LBS - 2LBS",
+        "precio_base": 72000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 2,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 38,
+        "marca": "STAR",
+        "producto": "PLATINUM WHEY PROTEIN CHOCOLATE X 2 LBS - 2LBS",
+        "precio_base": 72000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 39,
+        "marca": "STAR",
+        "producto": "WHEY PROTEIN VAINILLA X 2LB - DOYPACK - 2LB",
+        "precio_base": 70000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 40,
+        "marca": "STAR",
+        "producto": "WHEY PROTEIN CHOCOLATE X 2LB - DOYPACK - 2LB",
+        "precio_base": 70000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 41,
+        "marca": "STAR",
+        "producto": "WHEY PROTEIN COOKIES & CREAM X 2LB - DOYPACK - 2LB",
+        "precio_base": 70000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 42,
+        "marca": "STAR",
+        "producto": "WHEY PROTEIN BANANA X 2LB - DOYPACK - 2LB",
+        "precio_base": 70000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 43,
+        "marca": "STAR",
+        "producto": "COLLAGEN-SPORT-NARANJA - 360 gr",
+        "precio_base": 27000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 1,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 44,
+        "marca": "STAR",
+        "producto": "COLLAGEN-PLUS-LIMON - 360 gr",
+        "precio_base": 27000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 45,
+        "marca": "STAR",
+        "producto": "MULTIVITAMIN ICO",
+        "precio_base": 21500.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 0,
+            "san_javier": 1,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 46,
+        "marca": "STAR",
+        "producto": "CREATINA+WHEY PROTEIN CHOCOLATE",
+        "precio_base": 65000.0,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 1
+        }
+    },
+    {
+        "id": 47,
+        "marca": "STAR",
+        "producto": "CREATINA+WHEY PROTEIN VAINILLA",
+        "precio_base": 65000.0,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 0,
+            "san_javier": 1,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 48,
+        "marca": "STAR NUTRITION",
+        "producto": "CREATINA MONOHIDRATO 300 GRS DOYPACK Sabor Frutos Rojos - Frutos Rojos",
+        "precio_base": 24999.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 2,
+            "san_javier": 1,
+            "hulk_gym": 2
+        }
+    },
+    {
+        "id": 49,
+        "marca": "XTRENGHT",
+        "producto": "CREATINE 250 - 250 Grs.",
+        "precio_base": 18999.99,
+        "stock_minimo": 1,
+        "stock": {
+            "alem": 0,
+            "san_javier": 0,
+            "hulk_gym": 2
+        }
+    },
+    {
+        "id": 50,
+        "marca": "XTRENGHT",
+        "producto": "Best Whey 2 LBS - Vainilla",
+        "precio_base": 64500.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 1,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 51,
+        "marca": "ENTRENUTS",
+        "producto": "BARRA PROTEICA FRUTILLA",
+        "precio_base": 2000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 8,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 52,
+        "marca": "ENTRENUTS",
+        "producto": "BARRA PROTEICA CHOCO",
+        "precio_base": 2000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 9,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    },
+    {
+        "id": 53,
+        "marca": "ENTRENUTS",
+        "producto": "BARRA PROTEICA LIMON",
+        "precio_base": 2000.0,
+        "stock_minimo": 0,
+        "stock": {
+            "alem": 9,
+            "san_javier": 0,
+            "hulk_gym": 0
+        }
+    }
+]
+
+
+
 st.sidebar.markdown("---")
 st.sidebar.info("💡 **Precios:** Alem y San Javier usan Precio Base. Hulk Gym calcula su precio como (Precio Base / 0,9). Stock mínimo 0 deshabilita alertas.")
 
