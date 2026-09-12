@@ -67,6 +67,7 @@ menu = st.sidebar.radio(
         "🔄 Transferir entre Locales",
         "🛒 Registrar Venta",
         "➕ Nuevo Producto",
+        "🗑️ Eliminar Producto",
         "✏️ Modificar Precios",
         "📈 Estadísticas de Ventas",
         "📅 Calendario y Eventos",
@@ -188,6 +189,15 @@ elif menu == "📦 Inventario Completo":
       cat_filtro = st.selectbox("Filtrar por categoria:", ["Todas"] + CATEGORIAS)
 
     df_filtrado = df.copy()
+
+    # Ocultar productos con stock 0 cuando se selecciona una sucursal específica
+    if vista_ubicacion == "Alem":
+      df_filtrado = df_filtrado[df_filtrado["alem"] > 0]
+    elif vista_ubicacion == "San Javier":
+      df_filtrado = df_filtrado[df_filtrado["san_javier"] > 0]
+    elif vista_ubicacion == "Hulk Gym":
+      df_filtrado = df_filtrado[df_filtrado["hulk_gym"] > 0]
+
     if busqueda:
       criterio = busqueda.lower()
       df_filtrado = df_filtrado[
@@ -261,7 +271,14 @@ elif menu == "📦 Inventario Completo":
             "hulk_gym": "Stock en Hulk Gym",
         }
     )
-    st.dataframe(df_inv_view, use_container_width=True, hide_index=True)
+
+    if not df_inv_view.empty:
+      st.dataframe(df_inv_view, use_container_width=True, hide_index=True)
+    else:
+      st.info(
+          f"No hay productos con stock disponible en la ubicación:"
+          f" {vista_ubicacion}."
+      )
   else:
     st.info("No hay productos registrados.")
 
@@ -567,6 +584,74 @@ elif menu == "➕ Nuevo Producto":
             f"¡Producto '{marca} - {nombre}' creado exitosamente con Precio Base"
             f" de ${precio_base:,.2f}!"
         )
+
+elif menu == "🗑️ Eliminar Producto":
+  st.title("🗑️ Baja de Productos del Inventario")
+  st.markdown(
+      "Selecciona un producto para eliminarlo por completo del sistema (se"
+      " borrarán sus registros en todas las sucursales)."
+  )
+
+  df = pd.DataFrame(st.session_state["productos"])
+  if not df.empty:
+    with st.form("form_eliminar_prod"):
+      opciones_eliminar = {
+          (
+              f"[{row.get('marca', 'Genérica')}] {row['nombre']}"
+              f" ({row['presentacion']} - {row['sabor']}) [ID: {row['id']}]"
+          ): row["id"]
+          for index, row in df.iterrows()
+      }
+      prod_a_borrar_str = st.selectbox(
+          "Seleccionar Producto a Eliminar:", list(opciones_eliminar.keys())
+      )
+      prod_id_borrar = opciones_eliminar[prod_a_borrar_str]
+
+      confirmar_baja = st.checkbox(
+          "⚠️ Confirmo que deseo eliminar este producto permanentemente del"
+          " sistema."
+      )
+      submit_eliminar = st.form_submit_button("Eliminar Producto")
+
+      if submit_eliminar:
+        if confirmar_baja:
+          prod_eliminado = next(
+              (
+                  p
+                  for p in st.session_state["productos"]
+                  if p["id"] == prod_id_borrar
+              ),
+              None,
+          )
+          if prod_eliminado:
+            st.session_state["productos"] = [
+                p
+                for p in st.session_state["productos"]
+                if p["id"] != prod_id_borrar
+            ]
+            st.session_state["historial_movimientos"].insert(0, {
+                "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "tipo": "Baja Producto",
+                "producto": (
+                    f"{prod_eliminado.get('marca', '')}"
+                    f" {prod_eliminado['nombre']}"
+                ).strip(),
+                "cantidad": 0,
+                "destino": "Eliminado del Inventario",
+                "monto": 0.0,
+            })
+            st.success(
+                f"¡Producto '{prod_eliminado['nombre']}' eliminado con éxito del"
+                " inventario!"
+            )
+            st.rerun()
+        else:
+          st.error(
+              "Debes marcar la casilla de confirmación para poder eliminar el"
+              " producto."
+          )
+  else:
+    st.info("No hay productos registrados en el inventario.")
 
 elif menu == "✏️ Modificar Precios":
   st.title("✏️ Modificación de Precios")
