@@ -5,7 +5,7 @@ from datetime import datetime
 
 # --- CONFIGURACION DE LA PAGINA ---
 st.set_page_config(
-    page_title="Fit Store Supplements - Control de Stock",
+    page_title="Fit Store Supplements - Control de Stock y Precios",
     page_icon="💪",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -53,16 +53,17 @@ menu = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info("💡 **Consejo:** El Stock Total se calcula sumando automaticamente los tres puntos de venta.")
+st.sidebar.info("💡 **Precios:** Alem y San Javier usan el Precio Base. Hulk Gym (consignación) aplica un recargo automático del +10%.")
 
 if menu == "📊 Dashboard General":
     st.title("📊 Panel de Control General")
-    st.markdown("Vista global del inventario en los puntos de venta.")
+    st.markdown("Vista global del inventario y valoración en los puntos de venta.")
 
     df = pd.DataFrame(st.session_state['productos'])
     
     if not df.empty:
         df['Stock Total'] = df['alem'] + df['san_javier'] + df['hulk_gym']
+        df['Precio Hulk Gym'] = df['precio_base'] * 1.10
         
         total_alem = df['alem'].sum()
         total_san_javier = df['san_javier'].sum()
@@ -102,21 +103,24 @@ if menu == "📊 Dashboard General":
             st.success("¡Excelente! No hay productos con stock critico en ninguna ubicacion.")
 
         st.markdown("---")
-        st.subheader("📋 Resumen Rapido por Producto")
-        columnas_resumen = ['id', 'marca', 'nombre', 'categoria', 'sabor', 'presentacion', 'alem', 'san_javier', 'hulk_gym', 'Stock Total']
-        vista_resumen = df[[col for col in columnas_resumen if col in df.columns]]
+        st.subheader("📋 Resumen de Precios y Stock por Producto")
+        df_resumen = df.copy()
+        df_resumen['Precio Hulk Gym'] = df_resumen['Precio Hulk Gym'].round(2)
+        columnas_resumen = ['id', 'marca', 'nombre', 'categoria', 'presentacion', 'precio_base', 'Precio Hulk Gym', 'alem', 'san_javier', 'hulk_gym', 'Stock Total']
+        vista_resumen = df_resumen[[col for col in columnas_resumen if col in df_resumen.columns]].rename(columns={'precio_base': 'Precio Base (Alem/S.Javier)'})
         st.dataframe(vista_resumen, use_container_width=True, hide_index=True)
 
     else:
         st.warning("No hay productos cargados todavia. Dirigete a 'Nuevo Producto' para empezar.")
 
 elif menu == "📦 Inventario Completo":
-    st.title("📦 Inventario Detallado por Ubicacion")
-    st.markdown("Consulta y filtrado de todos los suplementos en stock.")
+    st.title("📦 Inventario Detallado y Precios")
+    st.markdown("Consulta precios diferenciados y stock por ubicación.")
 
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
         df['Stock Total'] = df['alem'] + df['san_javier'] + df['hulk_gym']
+        df['Precio Hulk Gym'] = (df['precio_base'] * 1.10).round(2)
         
         col_f1, col_f2 = st.columns(2)
         with col_f1:
@@ -134,8 +138,9 @@ elif menu == "📦 Inventario Completo":
         if cat_filtro != "Todas":
             df_filtrado = df_filtrado[df_filtrado['categoria'] == cat_filtro]
 
-        columnas_inv = ['id', 'marca', 'nombre', 'categoria', 'sabor', 'presentacion', 'alem', 'san_javier', 'hulk_gym', 'Stock Total', 'stock_minimo']
-        st.dataframe(df_filtrado[[col for col in columnas_inv if col in df_filtrado.columns]], use_container_width=True, hide_index=True)
+        columnas_inv = ['id', 'marca', 'nombre', 'categoria', 'sabor', 'presentacion', 'precio_base', 'Precio Hulk Gym', 'alem', 'san_javier', 'hulk_gym', 'Stock Total', 'stock_minimo']
+        df_inv_view = df_filtrado[[col for col in columnas_inv if col in df_filtrado.columns]].rename(columns={'precio_base': 'Precio Base (Alem/S.Javier)'})
+        st.dataframe(df_inv_view, use_container_width=True, hide_index=True)
     else:
         st.info("No hay productos registrados.")
 
@@ -219,7 +224,7 @@ elif menu == "🔄 Transferir entre Locales":
 
 elif menu == "🛒 Registrar Venta":
     st.title("🛒 Registro de Ventas / Salidas")
-    st.markdown("Descuenta stock directamente desde el punto de venta donde se realizo la venta al cliente.")
+    st.markdown("Descuenta stock y calcula el importe según el precio correspondiente al local.")
 
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
@@ -235,6 +240,12 @@ elif menu == "🛒 Registrar Venta":
             
             cantidad_venta = st.number_input("Cantidad vendida:", min_value=1, step=1, value=1)
             
+            # Cálculo de precio unitario según ubicación
+            if prod_actual:
+                precio_unitario = prod_actual['precio_base'] * 1.10 if punto_venta == "Hulk Gym" else prod_actual['precio_base']
+                total_venta = precio_unitario * cantidad_venta
+                st.info(f"💵 **Precio unitario aplicado en {punto_venta}:** ${precio_unitario:,.2f} | **Total a cobrar:** ${total_venta:,.2f}")
+
             submit_venta = st.form_submit_button("Registrar Venta")
             
             if submit_venta:
@@ -246,9 +257,9 @@ elif menu == "🛒 Registrar Venta":
                         "tipo": "Venta",
                         "producto": f"{prod_actual.get('marca', '')} {prod_actual['nombre']}".strip(),
                         "cantidad": cantidad_venta,
-                        "destino": f"Venta en {punto_venta}"
+                        "destino": f"Venta en {punto_venta} (${total_venta:,.2f})"
                     })
-                    st.success(f"¡Venta registrada con exito! Se descontaron {cantidad_venta} unidades en {punto_venta}.")
+                    st.success(f"¡Venta registrada con exito! Se descontaron {cantidad_venta} unidades en {punto_venta}. Total: ${total_venta:,.2f}")
                     st.rerun()
                 else:
                     st.error(f"Error: No hay suficiente stock en {punto_venta} para completar esta venta.")
@@ -257,7 +268,7 @@ elif menu == "🛒 Registrar Venta":
 
 elif menu == "➕ Nuevo Producto":
     st.title("➕ Alta de Nuevo Suplemento")
-    st.markdown("Agrega un nuevo producto al catalogo general especificando su stock inicial por ubicacion.")
+    st.markdown("Agrega un nuevo producto especificando su precio base (Alem / San Javier) y su stock inicial.")
 
     with st.form("form_nuevo_prod"):
         col1, col2 = st.columns(2)
@@ -265,6 +276,7 @@ elif menu == "➕ Nuevo Producto":
             marca = st.text_input("Marca del Suplemento (Ej: Star Nutrition, ENA):", "Star Nutrition")
             nombre = st.text_input("Nombre del Suplemento:", "Whey Gold Standard")
             categoria = st.selectbox("Categoria:", CATEGORIAS)
+            precio_base = st.number_input("Precio Base (para Alem y San Javier):", min_value=0.0, value=50000.0, step=100.0)
         with col2:
             sabor = st.text_input("Sabor:", "Chocolate")
             presentacion = st.text_input("Presentacion (Ej: 900g, 2kg, 60 caps):", "900 g")
@@ -294,6 +306,7 @@ elif menu == "➕ Nuevo Producto":
                     "categoria": categoria,
                     "sabor": sabor.strip(),
                     "presentacion": presentacion.strip(),
+                    "precio_base": precio_base,
                     "alem": init_alem,
                     "san_javier": init_san_javier,
                     "hulk_gym": init_hulk,
@@ -307,7 +320,7 @@ elif menu == "➕ Nuevo Producto":
                     "cantidad": init_alem + init_san_javier + init_hulk,
                     "destino": "Stock Inicial Global"
                 })
-                st.success(f"¡Producto '{marca} - {nombre}' creado exitosamente!")
+                st.success(f"¡Producto '{marca} - {nombre}' creado exitosamente con Precio Base de ${precio_base:,.2f}!")
 
 elif menu == "💾 Respaldos (Backup)":
     st.title("💾 Gestion de Respaldos de Datos")
