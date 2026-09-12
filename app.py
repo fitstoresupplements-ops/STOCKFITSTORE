@@ -770,7 +770,7 @@ st.sidebar.info(
     " precio como (Precio Base / 0,9). Stock mínimo 0 deshabilita alertas."
 )
 
-if menu == "📊 Dashboard General":
+if menu == "📊 General":
   st.title("📊 Panel de Control General")
   st.markdown("Vista global del inventario y valoración en los puntos de venta.")
 
