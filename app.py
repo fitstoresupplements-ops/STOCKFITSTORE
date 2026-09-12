@@ -38,10 +38,9 @@ if 'historial_movimientos' not in st.session_state:
     st.session_state['historial_movimientos'] = []
 
 UBICACIONES = {
-    "Deposito Central": "stock_central",
-    "Local Alem": "local_1",
-    "Local San Javier": "local_2",
-    "Hulk Gym": "local_3"
+    "Alem": "alem",
+    "San Javier": "san_javier",
+    "Hulk Gym": "hulk_gym"
 }
 
 CATEGORIAS = ["Proteinas", "Creatina", "Pre-Entreno", "Aminoacidos (BCAA)", "Vitaminas", "Otros", "Magnesio", "Colageno"]
@@ -54,34 +53,31 @@ menu = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info("💡 **Consejo:** El Stock Total se calcula sumando automaticamente el Deposito Central y los 3 Puntos de Venta.")
+st.sidebar.info("💡 **Consejo:** El Stock Total se calcula sumando automaticamente los tres puntos de venta.")
 
 if menu == "📊 Dashboard General":
     st.title("📊 Panel de Control General")
-    st.markdown("Vista global del inventario en el Deposito Central y los Puntos de Venta.")
+    st.markdown("Vista global del inventario en los puntos de venta.")
 
     df = pd.DataFrame(st.session_state['productos'])
     
     if not df.empty:
-        df['Stock Total'] = df['stock_central'] + df['local_1'] + df['local_2'] + df['local_3']
+        df['Stock Total'] = df['alem'] + df['san_javier'] + df['hulk_gym']
         
-        total_central = df['stock_central'].sum()
-        total_l1 = df['local_1'].sum()
-        total_l2 = df['local_2'].sum()
-        total_l3 = df['local_3'].sum()
+        total_alem = df['alem'].sum()
+        total_san_javier = df['san_javier'].sum()
+        total_hulk = df['hulk_gym'].sum()
         gran_total = df['Stock Total'].sum()
 
-        col1, col2, col3, col4, col5 = st.columns(5)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("📦 Stock General", f"{gran_total} un.")
         with col2:
-            st.metric("🏢 Deposito Central", f"{total_central} un.")
+            st.metric("🏬 Alem", f"{total_alem} un.")
         with col3:
-            st.metric("🏬 Local Alem", f"{total_l1} un.")
+            st.metric("🏬 San Javier", f"{total_san_javier} un.")
         with col4:
-            st.metric("🏬 Local San Javier", f"{total_l2} un.")
-        with col5:
-            st.metric("🏋️‍♂️ Hulk Gym", f"{total_l3} un.")
+            st.metric("🏋️‍♂️ Hulk Gym", f"{total_hulk} un.")
 
         st.markdown("---")
 
@@ -106,7 +102,7 @@ if menu == "📊 Dashboard General":
 
         st.markdown("---")
         st.subheader("📋 Resumen Rapido por Producto")
-        vista_resumen = df[['id', 'nombre', 'categoria', 'sabor', 'presentacion', 'stock_central', 'local_1', 'local_2', 'local_3', 'Stock Total']]
+        vista_resumen = df[['id', 'nombre', 'categoria', 'sabor', 'presentacion', 'alem', 'san_javier', 'hulk_gym', 'Stock Total']]
         st.dataframe(vista_resumen, use_container_width=True, hide_index=True)
 
     else:
@@ -118,7 +114,7 @@ elif menu == "📦 Inventario Completo":
 
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
-        df['Stock Total'] = df['stock_central'] + df['local_1'] + df['local_2'] + df['local_3']
+        df['Stock Total'] = df['alem'] + df['san_javier'] + df['hulk_gym']
         
         col_f1, col_f2 = st.columns(2)
         with col_f1:
@@ -138,7 +134,7 @@ elif menu == "📦 Inventario Completo":
 
 elif menu == "📥 Ingreso de Mercaderia":
     st.title("📥 Ingreso de Nueva Mercaderia")
-    st.markdown("Registra entradas de stock desde proveedores directamente al **Deposito Central**.")
+    st.markdown("Registra entradas de stock desde proveedores seleccionando el punto de venta de destino.")
 
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
@@ -147,7 +143,10 @@ elif menu == "📥 Ingreso de Mercaderia":
             prod_seleccionado_str = st.selectbox("Seleccionar Producto:", list(opciones_prod.keys()))
             prod_id = opciones_prod[prod_seleccionado_str]
             
-            cantidad_ingreso = st.number_input("Cantidad a ingresar en Deposito Central:", min_value=1, step=1, value=10)
+            destino_ingreso = st.selectbox("Punto de Venta de destino:", list(UBICACIONES.keys()))
+            key_ingreso = UBICACIONES[destino_ingreso]
+            
+            cantidad_ingreso = st.number_input("Cantidad a ingresar:", min_value=1, step=1, value=10)
             nota_ingreso = st.text_input("Observaciones / Proveedor (Opcional):", "Compra a proveedor")
             
             submit_ingreso = st.form_submit_button("Registrar Ingreso")
@@ -155,41 +154,46 @@ elif menu == "📥 Ingreso de Mercaderia":
             if submit_ingreso:
                 for p in st.session_state['productos']:
                     if p['id'] == prod_id:
-                        p['stock_central'] += cantidad_ingreso
+                        p[key_ingreso] += cantidad_ingreso
                         st.session_state['historial_movimientos'].insert(0, {
                             "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
                             "tipo": "Ingreso Proveedor",
                             "producto": p['nombre'],
                             "cantidad": cantidad_ingreso,
-                            "destino": f"Deposito Central (+{cantidad_ingreso})"
+                            "destino": f"{destino_ingreso} (+{cantidad_ingreso})"
                         })
-                        st.success(f"¡Ingreso registrado con exito! Se sumaron {cantidad_ingreso} unidades de {p['nombre']} al Deposito Central.")
+                        st.success(f"¡Ingreso registrado con exito! Se sumaron {cantidad_ingreso} unidades de {p['nombre']} a {destino_ingreso}.")
                         break
     else:
         st.warning("Primero debes dar de alta al menos un producto.")
 
 elif menu == "🔄 Transferir entre Locales":
     st.title("🔄 Transferencia de Stock")
-    st.markdown("Mueve mercaderia desde el **Deposito Central** hacia cualquiera de los Puntos de Venta.")
+    st.markdown("Mueve mercaderia entre los diferentes puntos de venta.")
 
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
         with st.form("form_transferencia"):
-            opciones_prod = {f"{row['nombre']} ({row['presentacion']}) - Stock Central: {row['stock_central']}": row['id'] for index, row in df.iterrows()}
+            origen_nombre = st.selectbox("Origen (Enviar desde):", list(UBICACIONES.keys()))
+            key_origen = UBICACIONES[origen_nombre]
+            
+            destinos_disponibles = [loc for loc in UBICACIONES.keys() if loc != origen_nombre]
+            destino_nombre = st.selectbox("Destino (Enviar hacia):", destinos_disponibles)
+            key_destino = UBICACIONES[destino_nombre]
+
+            opciones_prod = {f"{row['nombre']} ({row['presentacion']}) - Stock en {origen_nombre}: {row[key_origen]}": row['id'] for index, row in df.iterrows()}
             prod_seleccionado_str = st.selectbox("Seleccionar Producto:", list(opciones_prod.keys()))
             prod_id = opciones_prod[prod_seleccionado_str]
             
             prod_actual = next((p for p in st.session_state['productos'] if p['id'] == prod_id), None)
             
-            destino_nombre = st.selectbox("Enviar hacia:", ["Local Alem", "Local San Javier", "Hulk Gym"])
             cantidad_trans = st.number_input("Cantidad a transferir:", min_value=1, step=1, value=5)
             
             submit_trans = st.form_submit_button("Ejecutar Transferencia")
             
             if submit_trans:
-                if prod_actual and prod_actual['stock_central'] >= cantidad_trans:
-                    key_destino = UBICACIONES[destino_nombre]
-                    prod_actual['stock_central'] -= cantidad_trans
+                if prod_actual and prod_actual[key_origen] >= cantidad_trans:
+                    prod_actual[key_origen] -= cantidad_trans
                     prod_actual[key_destino] += cantidad_trans
                     
                     st.session_state['historial_movimientos'].insert(0, {
@@ -197,12 +201,12 @@ elif menu == "🔄 Transferir entre Locales":
                         "tipo": "Transferencia",
                         "producto": prod_actual['nombre'],
                         "cantidad": cantidad_trans,
-                        "destino": f"Deposito Central ➔ {destino_nombre}"
+                        "destino": f"{origen_nombre} ➔ {destino_nombre}"
                     })
-                    st.success(f"¡Transferencia exitosa! Se enviaron {cantidad_trans} unidades a {destino_nombre}.")
+                    st.success(f"¡Transferencia exitosa! Se enviaron {cantidad_trans} unidades de {origen_nombre} a {destino_nombre}.")
                     st.rerun()
                 else:
-                    st.error("Error: Stock insuficiente en el Deposito Central para realizar la transferencia.")
+                    st.error(f"Error: Stock insuficiente en {origen_nombre} para realizar la transferencia.")
     else:
         st.warning("No hay productos disponibles para transferir.")
 
@@ -213,7 +217,7 @@ elif menu == "🛒 Registrar Venta":
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
         with st.form("form_venta"):
-            punto_venta = st.selectbox("Punto de Venta donde se efectua la venta:", ["Local Alem", "Local San Javier", "Hulk Gym", "Deposito Central"])
+            punto_venta = st.selectbox("Punto de Venta donde se efectua la venta:", list(UBICACIONES.keys()))
             key_pv = UBICACIONES[punto_venta]
             
             opciones_prod = {f"{row['nombre']} ({row['presentacion']}) - Stock en {punto_venta}: {row[key_pv]}": row['id'] for index, row in df.iterrows()}
@@ -246,7 +250,7 @@ elif menu == "🛒 Registrar Venta":
 
 elif menu == "➕ Nuevo Producto":
     st.title("➕ Alta de Nuevo Suplemento")
-    st.markdown("Agrega un nuevo producto al catalogo general especificando su stock inicial.")
+    st.markdown("Agrega un nuevo producto al catalogo general especificando su stock inicial por ubicacion.")
 
     with st.form("form_nuevo_prod"):
         col1, col2 = st.columns(2)
@@ -260,15 +264,13 @@ elif menu == "➕ Nuevo Producto":
             id_prod = st.text_input("Codigo o SKU unico:", f"SUP-{len(st.session_state['productos'])+1:03d}")
 
         st.markdown("### Stock Inicial por Ubicacion")
-        col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+        col_s1, col_s2, col_s3 = st.columns(3)
         with col_s1:
-            init_central = st.number_input("Deposito Central", min_value=0, value=0, step=1)
+            init_alem = st.number_input("Alem", min_value=0, value=0, step=1)
         with col_s2:
-            init_l1 = st.number_input("Local Alem", min_value=0, value=0, step=1)
+            init_san_javier = st.number_input("San Javier", min_value=0, value=0, step=1)
         with col_s3:
-            init_l2 = st.number_input("Local San Javier", min_value=0, value=0, step=1)
-        with col_s4:
-            init_l3 = st.number_input("Hulk Gym", min_value=0, value=0, step=1)
+            init_hulk = st.number_input("Hulk Gym", min_value=0, value=0, step=1)
 
         submit_nuevo = st.form_submit_button("Guardar Nuevo Producto")
 
@@ -282,10 +284,9 @@ elif menu == "➕ Nuevo Producto":
                     "categoria": categoria,
                     "sabor": sabor,
                     "presentacion": presentacion,
-                    "stock_central": init_central,
-                    "local_1": init_l1,
-                    "local_2": init_l2,
-                    "local_3": init_l3,
+                    "alem": init_alem,
+                    "san_javier": init_san_javier,
+                    "hulk_gym": init_hulk,
                     "stock_minimo": stock_minimo
                 }
                 st.session_state['productos'].append(nuevo)
@@ -293,7 +294,7 @@ elif menu == "➕ Nuevo Producto":
                     "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "tipo": "Alta Producto",
                     "producto": nombre,
-                    "cantidad": init_central + init_l1 + init_l2 + init_l3,
+                    "cantidad": init_alem + init_san_javier + init_hulk,
                     "destino": "Stock Inicial Global"
                 })
                 st.success(f"¡Producto '{nombre}' creado exitosamente!")
