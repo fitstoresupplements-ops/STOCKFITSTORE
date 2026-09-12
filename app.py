@@ -1,12 +1,12 @@
-import streamlit as st
+ï»¿import streamlit as st
 import pandas as pd
 import json
 from datetime import datetime
 
-# --- CONFIGURACIÓN DE LA PÁGINA ---
+# --- CONFIGURACION DE LA PAGINA ---
 st.set_page_config(
     page_title="Suplix - Control de Stock",
-    page_icon="??",
+    page_icon="ğŸ’Š",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -31,13 +31,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- STREAMING_CHUNK:Initializing session state data... ---
 if 'productos' not in st.session_state:
     st.session_state['productos'] = [
         {
             "id": "SUP-001",
             "nombre": "Whey Protein 100% Isolate",
-            "categoria": "Proteínas",
+            "categoria": "Proteinas",
             "sabor": "Vainilla",
             "presentacion": "1 kg",
             "stock_central": 45,
@@ -83,36 +82,32 @@ if 'historial_movimientos' not in st.session_state:
         }
     ]
 
-# --- STREAMING_CHUNK:Defining locations and categories... ---
 UBICACIONES = {
-    "Depósito Central": "stock_central",
+    "Deposito Central": "stock_central",
     "Local 1 (Centro)": "local_1",
     "Local 2 (Zona Norte)": "local_2",
     "Local 3 (Shopping)": "local_3"
 }
 
-CATEGORIAS = ["Proteínas", "Creatina", "Pre-Entreno", "Aminoácidos (BCAA)", "Vitaminas", "Accesorios"]
+CATEGORIAS = ["Proteinas", "Creatina", "Pre-Entreno", "Aminoacidos (BCAA)", "Vitaminas", "Accesorios"]
 
-# --- STREAMING_CHUNK:Creating sidebar navigation... ---
-st.sidebar.title("?? Suplix Stock Manager")
+st.sidebar.title("ğŸ’Š Suplix Stock Manager")
 st.sidebar.markdown("---")
 menu = st.sidebar.radio(
-    "Navegación",
-    ["?? Dashboard General", "?? Inventario Completo", "?? Ingreso de Mercadería", "?? Transferir entre Locales", "?? Registrar Venta", "? Nuevo Producto", "?? Respaldos (Backup)"]
+    "Navegacion",
+    ["ğŸ“Š Dashboard General", "ğŸ“¦ Inventario Completo", "ğŸ“¥ Ingreso de Mercaderia", "ğŸ”„ Transferir entre Locales", "ğŸ›’ Registrar Venta", "â• Nuevo Producto", "ğŸ’¾ Respaldos (Backup)"]
 )
 
 st.sidebar.markdown("---")
-st.sidebar.info("?? **Consejo:** El Stock Total se calcula sumando automáticamente el Depósito Central y los 3 Puntos de Venta.")
+st.sidebar.info("ğŸ’¡ **Consejo:** El Stock Total se calcula sumando automaticamente el Deposito Central y los 3 Puntos de Venta.")
 
-# --- STREAMING_CHUNK:Rendering Dashboard view... ---
-if menu == "?? Dashboard General":
-    st.title("?? Panel de Control General")
-    st.markdown("Vista global del inventario en el Depósito Central y los 3 Puntos de Venta.")
+if menu == "ğŸ“Š Dashboard General":
+    st.title("ğŸ“Š Panel de Control General")
+    st.markdown("Vista global del inventario en el Deposito Central y los 3 Puntos de Venta.")
 
     df = pd.DataFrame(st.session_state['productos'])
     
     if not df.empty:
-        # Calcular stocks totales por fila
         df['Stock Total'] = df['stock_central'] + df['local_1'] + df['local_2'] + df['local_3']
         
         total_central = df['stock_central'].sum()
@@ -121,64 +116,60 @@ if menu == "?? Dashboard General":
         total_l3 = df['local_3'].sum()
         gran_total = df['Stock Total'].sum()
 
-        # Métricas principales
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
-            st.metric("?? Stock General", f"{gran_total} un.")
+            st.metric("ğŸ“¦ Stock General", f"{gran_total} un.")
         with col2:
-            st.metric("?? Depósito Central", f"{total_central} un.")
+            st.metric("ğŸ¢ Deposito Central", f"{total_central} un.")
         with col3:
-            st.metric("?? Local 1", f"{total_l1} un.")
+            st.metric("ğŸ¬ Local 1", f"{total_l1} un.")
         with col4:
-            st.metric("?? Local 2", f"{total_l2} un.")
+            st.metric("ğŸ¬ Local 2", f"{total_l2} un.")
         with col5:
-            st.metric("?? Local 3", f"{total_l3} un.")
+            st.metric("ğŸ¬ Local 3", f"{total_l3} un.")
 
         st.markdown("---")
 
-        # Alertas de Stock Bajo
-        st.subheader("?? Alertas de Stock Bajo")
+        st.subheader("âš ï¸ Alertas de Stock Bajo")
         alertas = []
         for index, row in df.iterrows():
             for loc_nombre, loc_key in UBICACIONES.items():
                 if row[loc_key] <= row['stock_minimo']:
                     alertas.append({
                         "Producto": row['nombre'],
-                        "Presentación": row['presentacion'],
-                        "Ubicación": loc_nombre,
+                        "Presentacion": row['presentacion'],
+                        "Ubicacion": loc_nombre,
                         "Stock Actual": row[loc_key],
-                        "Mínimo Requerido": row['stock_minimo']
+                        "Minimo Requerido": row['stock_minimo']
                     })
         
         if alertas:
             df_alertas = pd.DataFrame(alertas)
             st.dataframe(df_alertas, use_container_width=True, hide_index=True)
         else:
-            st.success("¡Excelente! No hay productos con stock crítico en ninguna ubicación.")
+            st.success("Â¡Excelente! No hay productos con stock critico en ninguna ubicacion.")
 
         st.markdown("---")
-        st.subheader("?? Resumen Rápido por Producto")
+        st.subheader("ğŸ“‹ Resumen Rapido por Producto")
         vista_resumen = df[['id', 'nombre', 'categoria', 'sabor', 'presentacion', 'stock_central', 'local_1', 'local_2', 'local_3', 'Stock Total']]
         st.dataframe(vista_resumen, use_container_width=True, hide_index=True)
 
     else:
-        st.warning("No hay productos cargados todavía. Dirigite a 'Nuevo Producto' para empezar.")
+        st.warning("No hay productos cargados todavia. Dirigete a 'Nuevo Producto' para empezar.")
 
-# --- STREAMING_CHUNK:Rendering Full Inventory view... ---
-elif menu == "?? Inventario Completo":
-    st.title("?? Inventario Detallado por Ubicación")
+elif menu == "ğŸ“¦ Inventario Completo":
+    st.title("ğŸ“¦ Inventario Detallado por Ubicacion")
     st.markdown("Consulta y filtrado de todos los suplementos en stock.")
 
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
         df['Stock Total'] = df['stock_central'] + df['local_1'] + df['local_2'] + df['local_3']
         
-        # Filtros de búsqueda
         col_f1, col_f2 = st.columns(2)
         with col_f1:
-            busqueda = st.text_input("?? Buscar por nombre de producto:", "")
+            busqueda = st.text_input("ğŸ” Buscar por nombre de producto:", "")
         with col_f2:
-            cat_filtro = st.selectbox("Filtrar por categoría:", ["Todas"] + CATEGORIAS)
+            cat_filtro = st.selectbox("Filtrar por categoria:", ["Todas"] + CATEGORIAS)
 
         df_filtrado = df.copy()
         if busqueda:
@@ -190,10 +181,9 @@ elif menu == "?? Inventario Completo":
     else:
         st.info("No hay productos registrados.")
 
-# --- STREAMING_CHUNK:Rendering Stock Intake view... ---
-elif menu == "?? Ingreso de Mercadería":
-    st.title("?? Ingreso de Nueva Mercadería")
-    st.markdown("Registra entradas de stock desde proveedores directamente al **Depósito Central**.")
+elif menu == "ğŸ“¥ Ingreso de Mercaderia":
+    st.title("ğŸ“¥ Ingreso de Nueva Mercaderia")
+    st.markdown("Registra entradas de stock desde proveedores directamente al **Deposito Central**.")
 
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
@@ -202,7 +192,7 @@ elif menu == "?? Ingreso de Mercadería":
             prod_seleccionado_str = st.selectbox("Seleccionar Producto:", list(opciones_prod.keys()))
             prod_id = opciones_prod[prod_seleccionado_str]
             
-            cantidad_ingreso = st.number_input("Cantidad a ingresar en Depósito Central:", min_value=1, step=1, value=10)
+            cantidad_ingreso = st.number_input("Cantidad a ingresar en Deposito Central:", min_value=1, step=1, value=10)
             nota_ingreso = st.text_input("Observaciones / Proveedor (Opcional):", "Compra a proveedor")
             
             submit_ingreso = st.form_submit_button("Registrar Ingreso")
@@ -216,17 +206,16 @@ elif menu == "?? Ingreso de Mercadería":
                             "tipo": "Ingreso Proveedor",
                             "producto": p['nombre'],
                             "cantidad": cantidad_ingreso,
-                            "destino": f"Depósito Central (+{cantidad_ingreso})"
+                            "destino": f"Deposito Central (+{cantidad_ingreso})"
                         })
-                        st.success(f"¡Ingreso registrado con éxito! Se sumaron {cantidad_ingreso} unidades de {p['nombre']} al Depósito Central.")
+                        st.success(f"Â¡Ingreso registrado con exito! Se sumaron {cantidad_ingreso} unidades de {p['nombre']} al Deposito Central.")
                         break
     else:
         st.warning("Primero debes dar de alta al menos un producto.")
 
-# --- STREAMING_CHUNK:Rendering Stock Transfer view... ---
-elif menu == "?? Transferir entre Locales":
-    st.title("?? Transferencia de Stock")
-    st.markdown("Mueve mercadería desde el **Depósito Central** hacia cualquiera de los 3 Puntos de Venta.")
+elif menu == "ğŸ”„ Transferir entre Locales":
+    st.title("ğŸ”„ Transferencia de Stock")
+    st.markdown("Mueve mercaderia desde el **Deposito Central** hacia cualquiera de los 3 Puntos de Venta.")
 
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
@@ -235,7 +224,6 @@ elif menu == "?? Transferir entre Locales":
             prod_seleccionado_str = st.selectbox("Seleccionar Producto:", list(opciones_prod.keys()))
             prod_id = opciones_prod[prod_seleccionado_str]
             
-            # Buscar el producto actual
             prod_actual = next((p for p in st.session_state['productos'] if p['id'] == prod_id), None)
             
             destino_nombre = st.selectbox("Enviar hacia:", ["Local 1 (Centro)", "Local 2 (Zona Norte)", "Local 3 (Shopping)"])
@@ -254,24 +242,23 @@ elif menu == "?? Transferir entre Locales":
                         "tipo": "Transferencia",
                         "producto": prod_actual['nombre'],
                         "cantidad": cantidad_trans,
-                        "destino": f"Depósito Central ? {destino_nombre}"
+                        "destino": f"Deposito Central â” {destino_nombre}"
                     })
-                    st.success(f"¡Transferencia exitosa! Se enviaron {cantidad_trans} unidades a {destino_nombre}.")
+                    st.success(f"Â¡Transferencia exitosa! Se enviaron {cantidad_trans} unidades a {destino_nombre}.")
                     st.rerun()
                 else:
-                    st.error("Error: Stock insuficiente en el Depósito Central para realizar la transferencia.")
+                    st.error("Error: Stock insuficiente en el Deposito Central para realizar la transferencia.")
     else:
         st.warning("No hay productos disponibles para transferir.")
 
-# --- STREAMING_CHUNK:Rendering Sales Registration view... ---
-elif menu == "?? Registrar Venta":
-    st.title("?? Registro de Ventas / Salidas")
-    st.markdown("Descuenta stock directamente desde el punto de venta donde se realizó la venta al cliente.")
+elif menu == "ğŸ›’ Registrar Venta":
+    st.title("ğŸ›’ Registro de Ventas / Salidas")
+    st.markdown("Descuenta stock directamente desde el punto de venta donde se realizo la venta al cliente.")
 
     df = pd.DataFrame(st.session_state['productos'])
     if not df.empty:
         with st.form("form_venta"):
-            punto_venta = st.selectbox("Punto de Venta donde se efectúa la venta:", ["Local 1 (Centro)", "Local 2 (Zona Norte)", "Local 3 (Shopping)", "Depósito Central"])
+            punto_venta = st.selectbox("Punto de Venta donde se efectua la venta:", ["Local 1 (Centro)", "Local 2 (Zona Norte)", "Local 3 (Shopping)", "Deposito Central"])
             key_pv = UBICACIONES[punto_venta]
             
             opciones_prod = {f"{row['nombre']} ({row['presentacion']}) - Stock en {punto_venta}: {row[key_pv]}": row['id'] for index, row in df.iterrows()}
@@ -295,33 +282,32 @@ elif menu == "?? Registrar Venta":
                         "cantidad": cantidad_venta,
                         "destino": f"Venta en {punto_venta}"
                     })
-                    st.success(f"¡Venta registrada con éxito! Se descontaron {cantidad_venta} unidades en {punto_venta}.")
+                    st.success(f"Â¡Venta registrada con exito! Se descontaron {cantidad_venta} unidades en {punto_venta}.")
                     st.rerun()
                 else:
                     st.error(f"Error: No hay suficiente stock en {punto_venta} para completar esta venta.")
     else:
         st.warning("No hay productos registrados.")
 
-# --- STREAMING_CHUNK:Rendering New Product view... ---
-elif menu == "? Nuevo Producto":
-    st.title("? Alta de Nuevo Suplemento")
-    st.markdown("Agrega un nuevo producto al catálogo general especificando su stock inicial.")
+elif menu == "â• Nuevo Producto":
+    st.title("â• Alta de Nuevo Suplemento")
+    st.markdown("Agrega un nuevo producto al catalogo general especificando su stock inicial.")
 
     with st.form("form_nuevo_prod"):
         col1, col2 = st.columns(2)
         with col1:
             nombre = st.text_input("Nombre del Suplemento:", "Whey Gold Standard")
-            categoria = st.selectbox("Categoría:", CATEGORIAS)
+            categoria = st.selectbox("Categoria:", CATEGORIAS)
             sabor = st.text_input("Sabor:", "Chocolate")
         with col2:
-            presentacion = st.text_input("Presentación (Ej: 900g, 2kg, 60 caps):", "900 g")
-            stock_minimo = st.number_input("Alerta de Stock Mínimo por local:", min_value=1, value=5, step=1)
-            id_prod = st.text_input("Código o SKU único:", f"SUP-{len(st.session_state['productos'])+1:03d}")
+            presentacion = st.text_input("Presentacion (Ej: 900g, 2kg, 60 caps):", "900 g")
+            stock_minimo = st.number_input("Alerta de Stock Minimo por local:", min_value=1, value=5, step=1)
+            id_prod = st.text_input("Codigo o SKU unico:", f"SUP-{len(st.session_state['productos'])+1:03d}")
 
-        st.markdown("### Stock Inicial por Ubicación")
+        st.markdown("### Stock Inicial por Ubicacion")
         col_s1, col_s2, col_s3, col_s4 = st.columns(4)
         with col_s1:
-            init_central = st.number_input("Depósito Central", min_value=0, value=20, step=1)
+            init_central = st.number_input("Deposito Central", min_value=0, value=20, step=1)
         with col_s2:
             init_l1 = st.number_input("Local 1", min_value=0, value=5, step=1)
         with col_s3:
@@ -333,7 +319,7 @@ elif menu == "? Nuevo Producto":
 
         if submit_nuevo:
             if nombre.strip() == "":
-                st.error("El nombre del producto no puede estar vacío.")
+                st.error("El nombre del producto no puede estar vacio.")
             else:
                 nuevo = {
                     "id": id_prod,
@@ -355,17 +341,16 @@ elif menu == "? Nuevo Producto":
                     "cantidad": init_central + init_l1 + init_l2 + init_l3,
                     "destino": "Stock Inicial Global"
                 })
-                st.success(f"¡Producto '{nombre}' creado exitosamente!")
+                st.success(f"Â¡Producto '{nombre}' creado exitosamente!")
 
-# --- STREAMING_CHUNK:Rendering Backup and Export view... ---
-elif menu == "?? Respaldos (Backup)":
-    st.title("?? Gestión de Respaldos de Datos")
-    st.markdown("Exporta o importa toda la información de tu inventario en un archivo JSON para mantener tus datos seguros.")
+elif menu == "ğŸ’¾ Respaldos (Backup)":
+    st.title("ğŸ’¾ Gestion de Respaldos de Datos")
+    st.markdown("Exporta o importa toda la informacion de tu inventario en un archivo JSON para mantener tus datos seguros.")
 
     col_exp, col_imp = st.columns(2)
 
     with col_exp:
-        st.subheader("?? Exportar Datos")
+        st.subheader("ğŸ“¤ Exportar Datos")
         st.write("Descarga un archivo con todo el estado actual del stock y movimientos.")
         
         datos_respaldo = {
@@ -375,14 +360,14 @@ elif menu == "?? Respaldos (Backup)":
         json_str = json.dumps(datos_respaldo, indent=4, ensure_ascii=False)
         
         st.download_button(
-            label="?? Descargar Backup (JSON)",
+            label="ğŸ“¥ Descargar Backup (JSON)",
             data=json_str,
             file_name=f"suplix_backup_{datetime.now().strftime('%Y-%m-%d')}.json",
             mime="application/json"
         )
 
     with col_imp:
-        st.subheader("?? Importar Datos")
+        st.subheader("ğŸ“¥ Importar Datos")
         st.write("Sube un archivo JSON previo para restaurar tu inventario.")
         
         archivo_subido = st.file_uploader("Selecciona tu archivo de respaldo (.json)", type=["json"])
@@ -390,20 +375,19 @@ elif menu == "?? Respaldos (Backup)":
             try:
                 datos_cargados = json.load(archivo_subido)
                 if "productos" in datos_cargados and "historial_movimientos" in datos_cargados:
-                    if st.button("Confirmar Restauración"):
+                    if st.button("Confirmar Restauracion"):
                         st.session_state['productos'] = datos_cargados['productos']
                         st.session_state['historial_movimientos'] = datos_cargados['historial_movimientos']
-                        st.success("¡Datos restaurados con éxito! Actualiza la página si es necesario.")
+                        st.success("Â¡Datos restaurados con exito! Actualiza la pagina si es necesario.")
                 else:
                     st.error("El archivo no tiene el formato correcto.")
             except Exception as e:
                 st.error(f"Error al leer el archivo: {e}")
 
-# --- STREAMING_CHUNK:Rendering recent movements section at bottom... ---
 st.markdown("---")
-with st.expander("?? Ver Historial Reciente de Movimientos"):
+with st.expander("ğŸ“œ Ver Historial Reciente de Movimientos"):
     if st.session_state['historial_movimientos']:
         df_mov = pd.DataFrame(st.session_state['historial_movimientos'])
         st.dataframe(df_mov, use_container_width=True, hide_index=True)
     else:
-        st.info("No hay movimientos registrados aún.")
+        st.info("No hay movimientos registrados aun.")
