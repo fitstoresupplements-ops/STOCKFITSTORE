@@ -35,11 +35,11 @@ def cargar_datos():
 df = cargar_datos()
 
 # Verificación de columnas clave según tu planilla actual
-columnas_requeridas = ["ID", "Marca", "Nombre", "Precio Base Alem"]
+columnas_requeridas = ["ID", "Marca", "Nombre", "Precio Base"]
 
 if not df.empty and any(col in df.columns for col in columnas_requeridas):
     # Limpieza profunda y conversión de columnas numéricas (sucursales y precios)
-    cols_numericas = ["Precio Base Alem", "Javier", "Hulk Gym", "Stock Minimo", "Stock Total"]
+    cols_numericas = ["Precio Base", "San Javier", "Hulk Gym", "Stock Minimo", "Stock Total"]
     for col in cols_numericas:
         if col in df.columns:
             df[col] = pd.to_numeric(
@@ -77,8 +77,8 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         st.subheader(f"Inventario Actual — Sucursal: {sucursal_sel}")
 
         df_inventario = df.copy()
-        if sucursal_sel == "Javier" and "Javier" in df_inventario.columns:
-            df_inventario = df_inventario[df_inventario['Javier'] > 0]
+        if sucursal_sel == "San Javier" and "San Javier" in df_inventario.columns:
+            df_inventario = df_inventario[df_inventario['San Javier'] > 0]
         elif sucursal_sel == "Hulk Gym" and "Hulk Gym" in df_inventario.columns:
             df_inventario = df_inventario[df_inventario['Hulk Gym'] > 0]
 
@@ -91,8 +91,8 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         with c3:
             # Cálculo de valorización robusto garantizando valores numéricos limpios
             valor_inventario = 0
-            if "Stock Total" in df_inventario.columns and "Precio Base Alem" in df_inventario.columns:
-                valor_inventario = (df_inventario["Stock Total"] * df_inventario["Precio Base Alem"]).sum()
+            if "Stock Total" in df_inventario.columns and "Precio Base" in df_inventario.columns:
+                valor_inventario = (df_inventario["Stock Total"] * df_inventario["Precio Base"]).sum()
             st.metric(
                 label="Valorización Estimada", value=f"${valor_inventario:,.2f}"
             )
@@ -114,12 +114,12 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         st.subheader("Registrar Venta y Descuento de Stock")
 
         with st.form("form_venta_local"):
-            sucursal_venta = st.selectbox("Punto de Venta", ["Alem", "Javier", "Hulk Gym"])
+            sucursal_venta = st.selectbox("Punto de Venta", ["Alem", "San Javier", "Hulk Gym"])
             
             # Mapear sucursal a la columna correspondiente de stock
             col_suc = "Stock Total"
-            if sucursal_venta == "Javier" and "Javier" in df.columns:
-                col_suc = "Javier"
+            if sucursal_venta == "San Javier" and "San Javier" in df.columns:
+                col_suc = "San Javier"
             elif sucursal_venta == "Hulk Gym" and "Hulk Gym" in df.columns:
                 col_suc = "Hulk Gym"
 
@@ -134,11 +134,11 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                 if not fila_prod.empty:
                     if col_suc in fila_prod.columns:
                         stock_actual = int(fila_prod[col_suc].values[0])
-                    if "Precio Base Alem" in fila_prod.columns:
-                        precio_base = float(fila_prod["Precio Base Alem"].values[0])
+                    if "Precio Base" in fila_prod.columns:
+                        precio_base = float(fila_prod["Precio Base"].values[0])
 
             # Cálculo automático del precio de venta según la sucursal seleccionada
-            if sucursal_venta in ["Alem", "Javier"]:
+            if sucursal_venta in ["Alem", "San Javier"]:
                 precio_sugerido = precio_base
             else:  # Hulk Gym
                 precio_sugerido = precio_base / 0.9 if 0.9 > 0 else precio_base
@@ -199,7 +199,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             with col_a:
                 prod_ingreso = st.text_input("Nombre del Suplemento / Producto")
                 suc_ingreso = st.selectbox(
-                    "Sucursal de Destino", ["Alem", "Javier", "Hulk Gym"]
+                    "Sucursal de Destino", ["Alem", "San Javier", "Hulk Gym"]
                 )
             with col_b:
                 cant_ingreso = st.number_input("Cantidad a Ingresar", min_value=1, value=1)
