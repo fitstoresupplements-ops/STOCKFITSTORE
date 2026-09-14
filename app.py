@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# Tu nueva URL oficial de Google Apps Script
+# Tu URL oficial de Google Apps Script
 WEB_APP_URL = (
     "https://script.google.com/macros/s/AKfycbxLtLL4AEKqgTkmWv6rFebTXdbxU46MogpaHCqV_gSiSUeXLdLGdfMsFsqui6Q9muAtPA/exec"
 )
@@ -27,8 +27,8 @@ def cargar_datos():
       data = response.json()
       if data:
         df = pd.DataFrame(data)
-        # Limpieza de nombres de columnas
-        df.columns = [str(col).strip().capitalize() for col in df.columns]
+        # Limpieza básica de nombres de columnas
+        df.columns = [str(col).strip() for col in df.columns]
         return df
     return pd.DataFrame()
   except Exception:
@@ -37,18 +37,21 @@ def cargar_datos():
 
 df = cargar_datos()
 
-# Verificación de columnas mínimas requeridas en la planilla
-columnas_requeridas = ["Producto", "Stock", "Sucursal", "Fecha"]
+# Verificación de columnas clave según tu planilla actual
+columnas_requeridas = ["ID", "Marca", "Nombre", "Precio Base Alem"]
 
-if not df.empty and all(col in df.columns for col in columnas_requeridas):
-  # Asegurar tipos de datos numéricos y de fecha
-  df["Stock"] = pd.to_numeric(df["Stock"], errors="coerce").fillna(0)
-  if "Precio" in df.columns:
-    df["Precio"] = pd.to_numeric(df["Precio"], errors="coerce").fillna(0)
-  else:
-    df["Precio"] = 0.0  # Valor por defecto si aún no existe la columna
-
-  df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+if not df.empty and any(col in df.columns for col in columnas_requeridas):
+  # Limpieza y conversión de columnas numéricas (sucursales y precios)
+  cols_numericas = [
+      "Precio Base Alem",
+      "Javier",
+      "Hulk Gym",
+      "Stock Minimo",
+      "Stock Total",
+  ]
+  for col in cols_numericas:
+    if col in df.columns:
+      df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
   # Menú de Pestañas Principales en la barra lateral
   st.sidebar.header("Menú de Navegación")
@@ -59,19 +62,13 @@ if not df.empty and all(col in df.columns for col in columnas_requeridas):
           "📥 Registrar Ingresos",
           "🗑️ Eliminar Mercadería",
           "✏️ Editar Precios / Stock",
-          "📊 Estadísticas y Ventas",
       ],
   )
 
-  # Filtro global de sucursal
+  # Filtro global de sucursal adaptado a tus columnas
   sucursal_sel = st.sidebar.selectbox(
-      "Filtrar por Sucursal", ["Todas", "Alem", "San Javier", "Hulk Gym"]
+      "Filtrar por Sucursal", ["Todas", "Alem", "Javier", "Hulk Gym"]
   )
-
-  if sucursal_sel != "Todas":
-    df_filtrado = df[df["Sucursal"] == sucursal_sel].copy()
-  else:
-    df_filtrado = df.copy()
 
   # -------------------------------------------------------------------------
   # 1. INVENTARIO GENERAL
@@ -79,32 +76,48 @@ if not df.empty and all(col in df.columns for col in columnas_requeridas):
   if pestana == "📦 Inventario General":
     st.subheader(f"Inventario Actual — Sucursal: {sucursal_sel}")
 
+    # Determinar qué columna de stock usar según la selección
+    if sucursal_sel == "Alem" and "Stock Minimo" in df.columns:
+      # Si querés usar la columna Stock Alem (asegurate de tenerla en la sheet o usar Precio Base Alem)
+      col_stock_actual = (
+          "Stock Total" if "Stock Total" in df.columns else "Precio Base Alem"
+      )
+    elif sucursal_sel == "Javier" and "Javier" in df.columns:
+      col_stock_actual = "Javier"
+    elif sucursal_sel == "Hulk Gym" and "Hulk Gym" in df.columns:
+      col_stock_actual = "Hulk Gym"
+    else:
+      col_stock_actual = (
+          "Stock Total" if "Stock Total" in df.columns else "ID"
+      )
+
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-      st.metric(label="Variedad de Productos", value=len(df_filtrado))
+      st.metric(label="Variedad de Productos", value=len(df))
     with c2:
-      st.metric(
-          label="Unidades Totales", value=int(df_filtrado["Stock"].sum())
+      unidades_totales = (
+          int(df["Stock Total"].sum()) if "Stock Total" in df.columns else 0
       )
+      st.metric(label="Unidades Totales", value=unidades_totales)
     with c3:
-      valor_total = (
-          (df_filtrado["Stock"] * df_filtrado["Precio"]).sum()
-          if "Precio" in df_filtrado.columns
+      valor_inventario = (
+          (df["Stock Total"] * df["Precio Base Alem"]).sum()
+          if "Stock Total" in df.columns and "Precio Base Alem" in df.columns
           else 0
       )
       st.metric(
-          label="Valorización Estimada", value=f"${valor_total:,.2f}"
+          label="Valorización Estimada", value=f"${valor_inventario:,.2f}"
       )
     with c4:
-      stock_critico_count = len(df_filtrado[df_filtrado["Stock"] <= 3])
-      st.metric(label="Alertas de Stock Bajo (<=3)", value=stock_critico_count)
+      stock_critico = (
+          len(df[df["Stock Total"] <= df["Stock Minimo"]])
+          if "Stock Total" in df.columns and "Stock Minimo" in df.columns
+          else 0
+      )
+      st.metric(label="Alertas de Stock Bajo", value=stock_critico)
 
     st.markdown("---")
-    st.dataframe(
-        df_filtrado.sort_values(by="Stock", ascending=True),
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.dataframe(df, use_container_width=True, hide_index=True)
 
   # -------------------------------------------------------------------------
   # 2. REGISTRAR INGRESOS
@@ -117,7 +130,7 @@ if not df.empty and all(col in df.columns for col in columnas_requeridas):
       with col_a:
         prod_ingreso = st.text_input("Nombre del Suplemento / Producto")
         suc_ingreso = st.selectbox(
-            "Sucursal de Destino", ["Alem", "San Javier", "Hulk Gym"]
+            "Sucursal de Destino", ["Alem", "Javier", "Hulk Gym"]
         )
       with col_b:
         cant_ingreso = st.number_input("Cantidad a Ingresar", min_value=1, value=1)
@@ -157,12 +170,9 @@ if not df.empty and all(col in df.columns for col in columnas_requeridas):
   # -------------------------------------------------------------------------
   elif pestana == "🗑️ Eliminar Mercadería":
     st.subheader("Baja o Retiro de Mercadería del Inventario")
-    st.write(
-        "Selecciona el producto que deseas retirar o descontar por completo:"
-    )
 
-    if not df_filtrado.empty:
-      productos_lista = df_filtrado["Producto"].unique().tolist()
+    if not df.empty and "Nombre" in df.columns:
+      productos_lista = df["Nombre"].unique().tolist()
       with st.form("form_eliminar"):
         prod_a_borrar = st.selectbox(
             "Seleccionar Producto", productos_lista
@@ -179,9 +189,7 @@ if not df.empty and all(col in df.columns for col in columnas_requeridas):
         if btn_eliminar:
           payload = {
               "producto": prod_a_borrar,
-              "stock": -abs(
-                  cant_retiro
-              ),  # Negativo para descontar del stock actual
+              "stock": -abs(cant_retiro),
               "sucursal": sucursal_sel if sucursal_sel != "Todas" else "Alem",
               "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
               "accion": "descontar",
@@ -194,7 +202,7 @@ if not df.empty and all(col in df.columns for col in columnas_requeridas):
           else:
             st.error("Error al procesar la solicitud.")
     else:
-      st.info("No hay productos disponibles para eliminar en esta sucursal.")
+      st.info("No hay productos disponibles para eliminar.")
 
   # -------------------------------------------------------------------------
   # 4. EDITAR PRECIOS / STOCK
@@ -206,13 +214,11 @@ if not df.empty and all(col in df.columns for col in columnas_requeridas):
         " los cambios."
     )
 
-    # Editor interactivo de datos en Streamlit
     df_editado = st.data_editor(
-        df_filtrado, use_container_width=True, hide_index=True, num_rows="dynamic"
+        df, use_container_width=True, hide_index=True, num_rows="dynamic"
     )
 
     if st.button("Guardar Cambios Masivos en la Planilla"):
-      # Convertimos el DataFrame modificado a JSON para enviarlo al script
       datos_nuevos = df_editado.to_dict(orient="records")
       payload = {"accion": "sincronizar_completo", "data": datos_nuevos}
       res = requests.post(WEB_APP_URL, json=payload)
@@ -223,73 +229,13 @@ if not df.empty and all(col in df.columns for col in columnas_requeridas):
       else:
         st.error("Error al actualizar la planilla.")
 
-  # -------------------------------------------------------------------------
-  # 5. ESTADÍSTICAS Y VENTAS
-  # -------------------------------------------------------------------------
-  elif pestana == "📊 Estadísticas y Ventas":
-    st.subheader("Panel de Estadísticas y Análisis Comercial")
-
-    # Filtros temporales para análisis
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-      tipo_periodo = st.selectbox(
-          "Agrupar análisis por:", ["Mensual", "Semanal", "Anual"]
-      )
-    with col_t2:
-      st.info(
-          "Mostrando métricas consolidadas para las sucursales de Fit Store"
-          " Supplements."
-      )
-
-    st.markdown("---")
-
-    if not df.empty and "Fecha" in df.columns:
-      # Procesamiento temporal
-      df_temp = df.copy()
-      df_temp = df_temp.dropna(subset=["Fecha"])
-
-      if tipo_periodo == "Mensual":
-        df_temp["Periodo"] = df_temp["Fecha"].dt.to_period("M").astype(str)
-      elif tipo_periodo == "Semanal":
-        df_temp["Periodo"] = (
-            df_temp["Fecha"].dt.isocalendar().year.astype(str)
-            + "-S"
-            + df_temp["Fecha"].dt.isocalendar().week.astype(str)
-        )
-      else:
-        df_temp["Periodo"] = df_temp["Fecha"].dt.year.astype(str)
-
-      # Agrupación por período y sucursal
-      resumen_periodo = (
-          df_temp.groupby(["Periodo", "Sucursal"])
-          .agg({"Stock": "sum"})
-          .reset_index()
-      )
-
-      st.markdown(f"#### Flujo de Stock Consolidado ({tipo_periodo})")
-      st.bar_chart(
-          resumen_periodo,
-          x="Periodo",
-          y="Stock",
-          color="Sucursal",
-          use_container_width=True,
-      )
-
-      st.markdown("---")
-      st.subheader("Detalle Analítico por Período")
-      st.dataframe(resumen_periodo, use_container_width=True, hide_index=True)
-    else:
-      st.warning(
-          "No hay suficientes registros con fecha válida para generar"
-          " estadísticas."
-      )
-
 else:
   st.warning(
-      "La planilla de Google Sheets está vacía o no tiene el formato de"
-      " columnas esperado ('Producto', 'Stock', 'Sucursal', 'Fecha', 'Precio')."
+      "La planilla de Google Sheets no coincide con la estructura esperada"
+      " (se buscan columnas como 'ID', 'Marca', 'Nombre', 'Precio Base"
+      " Alem')."
   )
   st.info(
-      "Usa la pestaña de 'Registrar Ingresos' o agrega las columnas básicas en"
-      " tu planilla para comenzar."
+      "Revisá que la primera fila de tu Google Sheet mantenga los encabezados"
+      " correctos."
   )
