@@ -236,19 +236,19 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     }
                     try:
-                        res = requests.post(WEB_APP_URL, json=payload)
-			st.write("Código de estado:", res.status_code)
-   
-			st.write("Respuesta exacta de Google:", res.text)
-                        if res.status_code == 200:
-                            st.cache_data.clear()
-                            st.success(f"¡Venta registrada con éxito! Stock descontado de {sucursal_venta}. Total: ${total_venta:,.2f}")
-                            st.rerun()
-                        else:
-                            st.error("Venta registrada localmente pero hubo un error al sincronizar con Google Sheets.")
-                    except Exception as e:
-                        st.error(f"Falla de conexión: {e}")
+                            res = requests.post(WEB_APP_URL, json=payload)
+                            
+                            st.write("Código de estado:", res.status_code)
+                            st.write("Respuesta exacta de Google:", res.text)
 
+                            if res.status_code == 200:
+                                st.cache_data.clear()
+                                st.success(f"¡Venta registrada con éxito! Stock descontado de {sucursal_venta}. Total: ${total_venta:,.2f}")
+                                st.rerun()
+                            else:
+                                st.error("Venta registrada localmente pero hubo un error al sincronizar con Google Sheets.")
+                        except Exception as e:
+                            st.error(f"Falla de conexión: {e}")
     # -------------------------------------------------------------------------
     # 3. REGISTRAR INGRESOS (NUEVO VS EXISTENTE)
     # -------------------------------------------------------------------------
