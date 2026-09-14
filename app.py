@@ -4,92 +4,292 @@ import requests
 import streamlit as st
 
 st.set_page_config(
-    page_title="Fit Store - Control de Stock Automatizado",
-    page_icon="📦",
+    page_title="Fit Store Supplements - Gestión Total",
+    page_icon="🚀",
     layout="wide",
 )
 
-# Tu enlace de Google Apps Script recién generado
+# Tu nueva URL oficial de Google Apps Script
 WEB_APP_URL = (
-    "https://script.google.com/macros/s/AKfycbzicNKXQtHp21umxx70Hh-PogUyJ71fFtbw3z1EITNoh1p-wbj77luSxbG3oMA8WNkbgw/exec"
+    "https://script.google.com/macros/s/AKfycbxLtLL4AEKqgTkmWv6rFebTXdbxU46MogpaHCqV_gSiSUeXLdLGdfMsFsqui6Q9muAtPA/exec"
 )
 
-st.title("Fit Store Supplements - Control de Stock Automatizado")
+st.title("Fit Store Supplements — Control Total de Operaciones")
 st.markdown("---")
 
 
-# Función para leer el stock actual desde Google Sheets
-@st.cache_data(ttl=10)
-def cargar_stock_sheets():
+# Función para cargar datos optimizada con caché
+@st.cache_data(ttl=5)
+def cargar_datos():
   try:
     response = requests.get(WEB_APP_URL)
     if response.status_code == 200:
       data = response.json()
       if data:
-        return pd.DataFrame(data)
+        df = pd.DataFrame(data)
+        # Limpieza de nombres de columnas
+        df.columns = [str(col).strip().capitalize() for col in df.columns]
+        return df
     return pd.DataFrame()
   except Exception:
     return pd.DataFrame()
 
 
-df = cargar_stock_sheets()
+df = cargar_datos()
 
-# Diseño de la interfaz principal en columnas
-col1, col2 = st.columns([2, 1])
+# Verificación de columnas mínimas requeridas en la planilla
+columnas_requeridas = ["Producto", "Stock", "Sucursal", "Fecha"]
 
-with col1:
-  st.subheader("Inventario Actual en Google Sheets")
-  if not df.empty:
-    st.dataframe(df, use_container_width=True)
+if not df.empty and all(col in df.columns for col in columnas_requeridas):
+  # Asegurar tipos de datos numéricos y de fecha
+  df["Stock"] = pd.to_numeric(df["Stock"], errors="coerce").fillna(0)
+  if "Precio" in df.columns:
+    df["Precio"] = pd.to_numeric(df["Precio"], errors="coerce").fillna(0)
   else:
-    st.info(
-        "La planilla está vacía o cargando datos. Agrega un producto abajo para"
-        " empezar."
+    df["Precio"] = 0.0  # Valor por defecto si aún no existe la columna
+
+  df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+
+  # Menú de Pestañas Principales en la barra lateral
+  st.sidebar.header("Menú de Navegación")
+  pestana = st.sidebar.radio(
+      "Seleccionar Sección",
+      [
+          "📦 Inventario General",
+          "📥 Registrar Ingresos",
+          "🗑️ Eliminar Mercadería",
+          "✏️ Editar Precios / Stock",
+          "📊 Estadísticas y Ventas",
+      ],
+  )
+
+  # Filtro global de sucursal
+  sucursal_sel = st.sidebar.selectbox(
+      "Filtrar por Sucursal", ["Todas", "Alem", "San Javier", "Hulk Gym"]
+  )
+
+  if sucursal_sel != "Todas":
+    df_filtrado = df[df["Sucursal"] == sucursal_sel].copy()
+  else:
+    df_filtrado = df.copy()
+
+  # -------------------------------------------------------------------------
+  # 1. INVENTARIO GENERAL
+  # -------------------------------------------------------------------------
+  if pestana == "📦 Inventario General":
+    st.subheader(f"Inventario Actual — Sucursal: {sucursal_sel}")
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+      st.metric(label="Variedad de Productos", value=len(df_filtrado))
+    with c2:
+      st.metric(
+          label="Unidades Totales", value=int(df_filtrado["Stock"].sum())
+      )
+    with c3:
+      valor_total = (
+          (df_filtrado["Stock"] * df_filtrado["Precio"]).sum()
+          if "Precio" in df_filtrado.columns
+          else 0
+      )
+      st.metric(
+          label="Valorización Estimada", value=f"${valor_total:,.2f}"
+      )
+    with c4:
+      stock_critico_count = len(df_filtrado[df_filtrado["Stock"] <= 3])
+      st.metric(label="Alertas de Stock Bajo (<=3)", value=stock_critico_count)
+
+    st.markdown("---")
+    st.dataframe(
+        df_filtrado.sort_values(by="Stock", ascending=True),
+        use_container_width=True,
+        hide_index=True,
     )
 
-with col2:
-  st.subheader("Resumen General")
-  if not df.empty:
-    st.metric(label="Total de Registros", value=len(df))
-  else:
-    st.metric(label="Total de Registros", value=0)
+  # -------------------------------------------------------------------------
+  # 2. REGISTRAR INGRESOS
+  # -------------------------------------------------------------------------
+  elif pestana == "📥 Registrar Ingresos":
+    st.subheader("Registro de Nuevos Ingresos de Mercadería")
 
-st.markdown("---")
-st.subheader("Registrar Nuevo Producto o Movimiento")
+    with st.form("form_ingresos"):
+      col_a, col_b = st.columns(2)
+      with col_a:
+        prod_ingreso = st.text_input("Nombre del Suplemento / Producto")
+        suc_ingreso = st.selectbox(
+            "Sucursal de Destino", ["Alem", "San Javier", "Hulk Gym"]
+        )
+      with col_b:
+        cant_ingreso = st.number_input("Cantidad a Ingresar", min_value=1, value=1)
+        precio_ingreso = st.number_input(
+            "Precio Unitario ($)", min_value=0.0, value=0.0, step=100.0
+        )
 
-# Formulario para escribir datos de vuelta a Google Sheets
-with st.form("form_stock_web"):
-  col_a, col_b, col_c = st.columns(3)
-  with col_a:
-    producto = st.text_input("Nombre del Suplemento / Producto")
-  with col_b:
-    stock = st.number_input("Cantidad / Stock", min_value=0, value=1)
-  with col_c:
-    sucursal = st.selectbox(
-        "Sucursal", ["Alem", "San Javier", "Hulk Gym"]
-    )
+      btn_ingreso = st.form_submit_button("Confirmar Ingreso de Stock")
 
-  enviado = st.form_submit_button("Guardar en Google Sheets")
-
-  if enviado:
-    if producto:
-      payload = {
-          "producto": producto,
-          "stock": stock,
-          "sucursal": sucursal,
-          "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-      }
-      try:
-        res = requests.post(WEB_APP_URL, json=payload)
-        if res.status_code == 200:
-          st.cache_data.clear()
-          st.success(
-              f"¡Guardado correctamente en Google Sheets para '{producto}'!"
-          )
-          st.rerun()
+      if btn_ingreso:
+        if prod_ingreso:
+          payload = {
+              "producto": prod_ingreso,
+              "stock": cant_ingreso,
+              "sucursal": suc_ingreso,
+              "precio": precio_ingreso,
+              "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+              "accion": "ingresar",
+          }
+          try:
+            res = requests.post(WEB_APP_URL, json=payload)
+            if res.status_code == 200:
+              st.cache_data.clear()
+              st.success(
+                  f"¡Ingreso registrado correctamente para '{prod_ingreso}'!"
+              )
+              st.rerun()
+            else:
+              st.error("Error al registrar en la planilla.")
+          except Exception as e:
+            st.error(f"Falla de conexión: {e}")
         else:
-          st.error("Error al comunicarse con la planilla.")
-      except Exception as e:
-        st.error(f"Error de conexión: {e}")
+          st.warning("El nombre del producto es obligatorio.")
+
+  # -------------------------------------------------------------------------
+  # 3. ELIMINAR MERCADERÍA
+  # -------------------------------------------------------------------------
+  elif pestana == "🗑️ Eliminar Mercadería":
+    st.subheader("Baja o Retiro de Mercadería del Inventario")
+    st.write(
+        "Selecciona el producto que deseas retirar o descontar por completo:"
+    )
+
+    if not df_filtrado.empty:
+      productos_lista = df_filtrado["Producto"].unique().tolist()
+      with st.form("form_eliminar"):
+        prod_a_borrar = st.selectbox(
+            "Seleccionar Producto", productos_lista
+        )
+        motivo_baja = st.selectbox(
+            "Motivo", ["Venta Realizada", "Merma / Daño", "Ajuste de Inventario"]
+        )
+        cant_retiro = st.number_input(
+            "Cantidad a retirar", min_value=1, value=1
+        )
+
+        btn_eliminar = st.form_submit_button("Procesar Baja de Stock")
+
+        if btn_eliminar:
+          payload = {
+              "producto": prod_a_borrar,
+              "stock": -abs(
+                  cant_retiro
+              ),  # Negativo para descontar del stock actual
+              "sucursal": sucursal_sel if sucursal_sel != "Todas" else "Alem",
+              "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+              "accion": "descontar",
+          }
+          res = requests.post(WEB_APP_URL, json=payload)
+          if res.status_code == 200:
+            st.cache_data.clear()
+            st.success(f"¡Stock actualizado correctamente para '{prod_a_borrar}'!")
+            st.rerun()
+          else:
+            st.error("Error al procesar la solicitud.")
     else:
-      st.warning("Por favor, ingresa el nombre del producto.")
+      st.info("No hay productos disponibles para eliminar en esta sucursal.")
+
+  # -------------------------------------------------------------------------
+  # 4. EDITAR PRECIOS / STOCK
+  # -------------------------------------------------------------------------
+  elif pestana == "✏️ Editar Precios / Stock":
+    st.subheader("Edición Directa de Precios y Stock")
+    st.write(
+        "Modifica los valores directamente sobre la tabla interactiva y guarda"
+        " los cambios."
+    )
+
+    # Editor interactivo de datos en Streamlit
+    df_editado = st.data_editor(
+        df_filtrado, use_container_width=True, hide_index=True, num_rows="dynamic"
+    )
+
+    if st.button("Guardar Cambios Masivos en la Planilla"):
+      # Convertimos el DataFrame modificado a JSON para enviarlo al script
+      datos_nuevos = df_editado.to_dict(orient="records")
+      payload = {"accion": "sincronizar_completo", "data": datos_nuevos}
+      res = requests.post(WEB_APP_URL, json=payload)
+      if res.status_code == 200:
+        st.cache_data.clear()
+        st.success("¡Base de datos sincronizada y actualizada con éxito!")
+        st.rerun()
+      else:
+        st.error("Error al actualizar la planilla.")
+
+  # -------------------------------------------------------------------------
+  # 5. ESTADÍSTICAS Y VENTAS
+  # -------------------------------------------------------------------------
+  elif pestana == "📊 Estadísticas y Ventas":
+    st.subheader("Panel de Estadísticas y Análisis Comercial")
+
+    # Filtros temporales para análisis
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+      tipo_periodo = st.selectbox(
+          "Agrupar análisis por:", ["Mensual", "Semanal", "Anual"]
+      )
+    with col_t2:
+      st.info(
+          "Mostrando métricas consolidadas para las sucursales de Fit Store"
+          " Supplements."
+      )
+
+    st.markdown("---")
+
+    if not df.empty and "Fecha" in df.columns:
+      # Procesamiento temporal
+      df_temp = df.copy()
+      df_temp = df_temp.dropna(subset=["Fecha"])
+
+      if tipo_periodo == "Mensual":
+        df_temp["Periodo"] = df_temp["Fecha"].dt.to_period("M").astype(str)
+      elif tipo_periodo == "Semanal":
+        df_temp["Periodo"] = (
+            df_temp["Fecha"].dt.isocalendar().year.astype(str)
+            + "-S"
+            + df_temp["Fecha"].dt.isocalendar().week.astype(str)
+        )
+      else:
+        df_temp["Periodo"] = df_temp["Fecha"].dt.year.astype(str)
+
+      # Agrupación por período y sucursal
+      resumen_periodo = (
+          df_temp.groupby(["Periodo", "Sucursal"])
+          .agg({"Stock": "sum"})
+          .reset_index()
+      )
+
+      st.markdown(f"#### Flujo de Stock Consolidado ({tipo_periodo})")
+      st.bar_chart(
+          resumen_periodo,
+          x="Periodo",
+          y="Stock",
+          color="Sucursal",
+          use_container_width=True,
+      )
+
+      st.markdown("---")
+      st.subheader("Detalle Analítico por Período")
+      st.dataframe(resumen_periodo, use_container_width=True, hide_index=True)
+    else:
+      st.warning(
+          "No hay suficientes registros con fecha válida para generar"
+          " estadísticas."
+      )
+
+else:
+  st.warning(
+      "La planilla de Google Sheets está vacía o no tiene el formato de"
+      " columnas esperado ('Producto', 'Stock', 'Sucursal', 'Fecha', 'Precio')."
+  )
+  st.info(
+      "Usa la pestaña de 'Registrar Ingresos' o agrega las columnas básicas en"
+      " tu planilla para comenzar."
+  )
