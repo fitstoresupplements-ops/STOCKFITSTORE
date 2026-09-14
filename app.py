@@ -66,16 +66,31 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         if col in df.columns:
             df[col] = df[col].apply(limpiar_numero)
 
-    # Crear columna combinada "Marca - Nombre - Sabor"
+    # Crear columna combinada "Marca - Nombre - Presentación - Sabor"
     if "Marca" in df.columns and "Nombre" in df.columns:
-        if "Sabor" in df.columns:
-            df["Sabor_Clean"] = df["Sabor"].fillna("").astype(str).str.strip()
-            df["Producto_Display"] = df.apply(
-                lambda row: f"{row['Marca']} - {row['Nombre']}" + (f" - {row['Sabor_Clean']}" if row['Sabor_Clean'] and row['Sabor_Clean'].lower() != 'nan' else ""),
-                axis=1
-            )
-        else:
-            df["Producto_Display"] = df["Marca"].astype(str) + " - " + df["Nombre"].astype(str)
+        col_pres = "Presentacion" if "Presentacion" in df.columns else ("Presentación" if "Presentación" in df.columns else None)
+        
+        def construir_display(row):
+            marca = str(row.get("Marca", "")).strip()
+            nombre = str(row.get("Nombre", "")).strip()
+            
+            pres = ""
+            if col_pres:
+                pres = str(row.get(col_pres, "")).strip()
+            
+            sabor = ""
+            if "Sabor" in df.columns:
+                sabor = str(row.get("Sabor", "")).strip()
+            
+            partes = [marca, nombre]
+            if pres and pres.lower() != 'nan':
+                partes.append(pres)
+            if sabor and sabor.lower() != 'nan':
+                partes.append(sabor)
+                
+            return " - ".join([p for p in partes if p])
+
+        df["Producto_Display"] = df.apply(construir_display, axis=1)
     else:
         df["Producto_Display"] = df["Nombre"].astype(str) if "Nombre" in df.columns else df.index.astype(str)
 
@@ -145,7 +160,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         sucursal_venta = st.selectbox("Punto de Venta", ["Alem", "San Javier", "Hulk Gym"], key="venta_sucursal")
         
         productos_disponibles = df["Producto_Display"].tolist() if "Producto_Display" in df.columns else []
-        prod_seleccionado_display = st.selectbox("Producto (Marca - Nombre - Sabor)", productos_disponibles, key="venta_producto")
+        prod_seleccionado_display = st.selectbox("Producto (Marca - Nombre - Presentación - Sabor)", productos_disponibles, key="venta_producto")
 
         # Búsqueda flexible de la columna de la sucursal correspondiente
         col_suc = "Stock Total"
@@ -211,7 +226,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     
                     st.session_state['ventas'] = pd.concat([st.session_state['ventas'], pd.DataFrame([nueva_venta])], ignore_index=True)
 
-                    # Payload mejorado con ID, Nombre y Sabor exacto para que Apps Script ubique la variante correcta
                     payload = {
                         "accion": "descontar",
                         "id": str(id_real_prod),
@@ -241,7 +255,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         tipo_ingreso = st.radio("Tipo de Ingreso", ["Producto Existente", "Producto Nuevo"], horizontal=True)
 
         if tipo_ingreso == "Producto Nuevo":
-            # Generar ID automático correlativo
             nuevo_id = "SUP-001"
             if "ID" in df.columns and not df.empty:
                 ids_numericos = []
@@ -302,13 +315,11 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     else:
                         st.warning("El nombre del producto es obligatorio.")
 
-        else:  # Producto Existente fuera del form para actualizar en tiempo real
+        else:  # Producto Existente
             productos_lista = df["Producto_Display"].tolist() if "Producto_Display" in df.columns else []
             
-            # Selector fuera del formulario para que actualice la vista al instante
             prod_elegido = st.selectbox("Seleccionar Producto Existente", productos_lista, key="select_prod_existente")
 
-            # Obtener datos base y sabores específicos del producto seleccionado de forma dinámica
             precio_auto = 0.0
             nombre_real_existente = ""
             marca_existente = ""
@@ -335,7 +346,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
 
             st.markdown(f"💰 **Precio Base Registrado:** ${precio_auto:,.2f}")
 
-            # Selector de tipo de sabor FUERA del formulario para que cambie el campo dinámicamente al instante
             if sabores_existentes:
                 tipo_sabor = st.radio("¿El sabor ya está registrado para este producto o es un sabor nuevo?", ["Sabor Existente", "Sabor Nuevo"], horizontal=True, key="radio_tipo_sabor")
             else:
@@ -417,7 +427,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             productos_lista = df["Producto_Display"].tolist()
             with st.form("form_eliminar"):
                 prod_a_borrar_display = st.selectbox(
-                    "Seleccionar Producto (Marca - Nombre - Sabor)", productos_lista
+                    "Seleccionar Producto (Marca - Nombre - Presentación - Sabor)", productos_lista
                 )
                 
                 nombre_baja_real = prod_a_borrar_display
