@@ -287,51 +287,50 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     else:
                         st.warning("El nombre del producto es obligatorio.")
 
-        else:  # Producto Existente
+        else:  # Producto Existente fuera del form para actualizar en tiempo real
             productos_lista = df["Producto_Display"].tolist() if "Producto_Display" in df.columns else []
             
+            # Selector fuera del formulario para que actualice la vista al instante
+            prod_elegido = st.selectbox("Seleccionar Producto Existente", productos_lista, key="select_prod_existente")
+
+            # Obtener datos base y sabores específicos del producto seleccionado de forma dinámica
+            precio_auto = 0.0
+            nombre_real_existente = ""
+            marca_existente = ""
+            categoria_existente = ""
+            presentacion_existente = ""
+            sabores_existentes = []
+
+            if prod_elegido and not df.empty:
+                filas_prod = df[df["Producto_Display"] == prod_elegido]
+                if not filas_prod.empty:
+                    primera_fila = filas_prod.iloc[0]
+                    nombre_real_existente = primera_fila.get("Nombre", "")
+                    marca_existente = primera_fila.get("Marca", "")
+                    categoria_existente = primera_fila.get("Categoría" if "Categoría" in df.columns else "Categoria", "")
+                    presentacion_existente = primera_fila.get("Presentacion" if "Presentacion" in df.columns else "Presentación", "")
+                    
+                    if "Precio Base" in primera_fila:
+                        precio_auto = float(limpiar_numero(primera_fila["Precio Base"]))
+                    
+                    if "Sabor" in df.columns:
+                        sabores_existentes = [str(s).strip() for s in filas_prod["Sabor"].dropna().unique().tolist() if str(s).strip() and str(s).strip().lower() != 'nan']
+
+            st.markdown(f"💰 **Precio Base Registrado:** ${precio_auto:,.2f}")
+
             with st.form("form_ingreso_existente"):
-                prod_elegido = st.selectbox("Seleccionar Producto Existente", productos_lista)
-                
-                # Obtener datos base del producto seleccionado
-                precio_auto = 0.0
-                nombre_real_existente = ""
-                marca_existente = ""
-                categoria_existente = ""
-                presentacion_existente = ""
-                sabores_existentes = []
-
-                if prod_elegido and not df.empty:
-                    # Filtrar filas que corresponden a este producto base
-                    filas_prod = df[df["Producto_Display"] == prod_elegido]
-                    if not filas_prod.empty:
-                        primera_fila = filas_prod.iloc[0]
-                        nombre_real_existente = primera_fila.get("Nombre", "")
-                        marca_existente = primera_fila.get("Marca", "")
-                        categoria_existente = primera_fila.get("Categoría" if "Categoría" in df.columns else "Categoria", "")
-                        presentacion_existente = primera_fila.get("Presentacion" if "Presentacion" in df.columns else "Presentación", "")
-                        
-                        if "Precio Base" in primera_fila:
-                            precio_auto = float(limpiar_numero(primera_fila["Precio Base"]))
-                        
-                        if "Sabor" in df.columns:
-                            sabores_existentes = filas_prod["Sabor"].dropna().unique().tolist()
-
-                st.markdown(f"💰 **Precio Base Registrado:** ${precio_auto:,.2f}")
-
-                # Manejo inteligente de Sabor (Existente vs Nuevo)
-                tipo_sabor = "Sabor Existente"
+                # Manejo dinámico de Sabor según el producto seleccionado
                 if sabores_existentes:
-                    tipo_sabor = st.radio("¿El sabor ya está registrado para este producto o es nuevo?", ["Sabor Existente", "Sabor Nuevo"], horizontal=True)
+                    tipo_sabor = st.radio("¿El sabor ya está registrado para este producto o es nuevo?", ["Sabor Existente", "Sabor Nuevo"], horizontal=True, key="radio_tipo_sabor")
                 else:
-                    st.info("No hay sabores previos registrados. Se registrará como un nuevo sabor.")
+                    st.info("No hay sabores previos registrados para este producto. Se registrará como un nuevo sabor.")
                     tipo_sabor = "Sabor Nuevo"
 
                 sabor_final = ""
                 if tipo_sabor == "Sabor Existente" and sabores_existentes:
-                    sabor_final = st.selectbox("Seleccionar Sabor Existente", sabores_existentes)
+                    sabor_final = st.selectbox("Seleccionar Sabor Existente", sabores_existentes, key="select_sabor_existente")
                 else:
-                    sabor_final = st.text_input("Ingrese el Nombre del Nuevo Sabor")
+                    sabor_final = st.text_input("Ingrese el Nombre del Nuevo Sabor", key="input_nuevo_sabor")
 
                 col_e1, col_e2 = st.columns(2)
                 with col_e1:
@@ -345,7 +344,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     if tipo_sabor == "Sabor Nuevo" and not sabor_final.strip():
                         st.warning("Debes ingresar el nombre del nuevo sabor.")
                     else:
-                        # Si es sabor nuevo, generamos un nuevo ID y enviamos acción de ingresar nuevo registro
                         if tipo_sabor == "Sabor Nuevo":
                             nuevo_id = "SUP-001"
                             if "ID" in df.columns and not df.empty:
@@ -372,7 +370,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                                 "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             }
                         else:
-                            # Si es sabor existente, simplemente sumamos stock al registro actual de ese sabor
                             payload = {
                                 "producto": nombre_real_existente,
                                 "sabor": sabor_final,
