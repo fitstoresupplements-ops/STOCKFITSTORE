@@ -38,12 +38,16 @@ df = cargar_datos()
 columnas_requeridas = ["ID", "Marca", "Nombre", "Precio Base Alem"]
 
 if not df.empty and any(col in df.columns for col in columnas_requeridas):
-    # Limpieza y conversión de columnas numéricas (sucursales y precios)
+    # Limpieza profunda y conversión de columnas numéricas (sucursales y precios)
     cols_numericas = ["Precio Base Alem", "Javier", "Hulk Gym", "Stock Minimo", "Stock Total"]
     for col in cols_numericas:
         if col in df.columns:
             df[col] = pd.to_numeric(
-                df[col].astype(str).str.replace('$', '').str.replace('.', '').str.replace(',', '.'),
+                df[col].astype(str)
+                .str.replace('$', '', regex=False)
+                .str.replace(' ', '', regex=False)
+                .str.replace('.', '', regex=False)
+                .str.replace(',', '.', regex=False),
                 errors="coerce"
             ).fillna(0)
 
@@ -72,12 +76,8 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
     if pestana == "📦 Inventario General":
         st.subheader(f"Inventario Actual — Sucursal: {sucursal_sel}")
 
-        # Filtrar DataFrame según la sucursal seleccionada si no es "Todas"
         df_inventario = df.copy()
-        if sucursal_sel == "Alem" and "Precio Base Alem" in df_inventario.columns:
-            # Si deseas filtrar o mostrar el stock específico de Alem (ajustable según tu columna de stock para Alem)
-            pass
-        elif sucursal_sel == "Javier" and "Javier" in df_inventario.columns:
+        if sucursal_sel == "Javier" and "Javier" in df_inventario.columns:
             df_inventario = df_inventario[df_inventario['Javier'] > 0]
         elif sucursal_sel == "Hulk Gym" and "Hulk Gym" in df_inventario.columns:
             df_inventario = df_inventario[df_inventario['Hulk Gym'] > 0]
@@ -89,7 +89,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             unidades_totales = int(df_inventario["Stock Total"].sum()) if "Stock Total" in df_inventario.columns else 0
             st.metric(label="Unidades Totales", value=unidades_totales)
         with c3:
-            # Cálculo seguro del valor total evitando errores de lectura cero
+            # Cálculo de valorización robusto garantizando valores numéricos limpios
             valor_inventario = 0
             if "Stock Total" in df_inventario.columns and "Precio Base Alem" in df_inventario.columns:
                 valor_inventario = (df_inventario["Stock Total"] * df_inventario["Precio Base Alem"]).sum()
@@ -126,17 +126,26 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             productos_disponibles = df["Nombre"].unique().tolist() if "Nombre" in df.columns else []
             prod_seleccionado = st.selectbox("Producto", productos_disponibles)
 
-            # Obtener stock actual del producto en esa sucursal
+            # Obtener stock actual y precio base del producto seleccionado
             stock_actual = 0
+            precio_base = 0.0
             if prod_seleccionado and not df.empty:
                 fila_prod = df[df["Nombre"] == prod_seleccionado]
-                if not fila_prod.empty and col_suc in fila_prod.columns:
-                    stock_actual = int(fila_prod[col_suc].values[0])
+                if not fila_prod.empty:
+                    if col_suc in fila_prod.columns:
+                        stock_actual = int(fila_prod[col_suc].values[0])
+                    if "Precio Base Alem" in fila_prod.columns:
+                        precio_base = float(fila_prod["Precio Base Alem"].values[0])
 
-            st.info(f"Stock disponible en {sucursal_venta}: {stock_actual} unidades")
+            # Cálculo automático del precio de venta según la sucursal seleccionada
+            if sucursal_venta in ["Alem", "Javier"]:
+                precio_sugerido = precio_base
+            else:  # Hulk Gym
+                precio_sugerido = precio_base / 0.9 if 0.9 > 0 else precio_base
+
+            st.info(f"Stock disponible en {sucursal_venta}: {stock_actual} unidades | **Precio Unitario Automático: ${precio_sugerido:,.2f}**")
 
             cant_venta = st.number_input("Cantidad a Vender", min_value=1, max_value=max(1, stock_actual), step=1)
-            precio_unitario_venta = st.number_input("Precio de Venta Unitario ($)", min_value=0.0, step=100.0)
 
             btn_registrar_venta = st.form_submit_button("Confirmar y Descontar Stock")
 
@@ -144,13 +153,15 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                 if cant_venta > stock_actual:
                     st.error("No hay suficiente stock para realizar la venta en esta sucursal.")
                 else:
+                    total_venta = cant_venta * precio_sugerido
+
                     # Registrar en el historial de sesión
                     nueva_venta = {
                         'Fecha': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                         'Punto de Venta': sucursal_venta,
                         'Producto': prod_seleccionado,
                         'Cantidad': cant_venta,
-                        'Total': cant_venta * precio_unitario_venta
+                        'Total': total_venta
                     }
                     
                     if 'ventas' not in st.session_state:
@@ -170,7 +181,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                         res = requests.post(WEB_APP_URL, json=payload)
                         if res.status_code == 200:
                             st.cache_data.clear()
-                            st.success(f"¡Venta registrada con éxito! Stock descontado de {sucursal_venta}.")
+                            st.success(f"¡Venta registrada con éxito! Stock descontado de {sucursal_venta}. Total: ${total_venta:,.2f}")
                             st.rerun()
                         else:
                             st.error("Venta registrada localmente pero hubo un error al sincronizar con Google Sheets.")
