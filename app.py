@@ -226,7 +226,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         tipo_ingreso = st.radio("Tipo de Ingreso", ["Producto Existente", "Producto Nuevo"], horizontal=True)
 
         if tipo_ingreso == "Producto Nuevo":
-            # Generar ID automático correlativo (ej. SUP-005 basándose en SUP-004 o cantidad de filas)
+            # Generar ID automático correlativo
             nuevo_id = "SUP-001"
             if "ID" in df.columns and not df.empty:
                 ids_numericos = []
@@ -293,46 +293,105 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             with st.form("form_ingreso_existente"):
                 prod_elegido = st.selectbox("Seleccionar Producto Existente", productos_lista)
                 
-                # Obtener precio base automático del producto seleccionado
+                # Obtener datos base del producto seleccionado
                 precio_auto = 0.0
                 nombre_real_existente = ""
+                marca_existente = ""
+                categoria_existente = ""
+                presentacion_existente = ""
+                sabores_existentes = []
+
                 if prod_elegido and not df.empty:
-                    fila_ex = df[df["Producto_Display"] == prod_elegido]
-                    if not fila_ex.empty:
-                        nombre_real_existente = fila_ex["Nombre"].values[0] if "Nombre" in fila_ex.columns else ""
-                        if "Precio Base" in fila_ex.columns:
-                            precio_auto = float(limpiar_numero(fila_ex["Precio Base"].values[0]))
+                    # Filtrar filas que corresponden a este producto base
+                    filas_prod = df[df["Producto_Display"] == prod_elegido]
+                    if not filas_prod.empty:
+                        primera_fila = filas_prod.iloc[0]
+                        nombre_real_existente = primera_fila.get("Nombre", "")
+                        marca_existente = primera_fila.get("Marca", "")
+                        categoria_existente = primera_fila.get("Categoría" if "Categoría" in df.columns else "Categoria", "")
+                        presentacion_existente = primera_fila.get("Presentacion" if "Presentacion" in df.columns else "Presentación", "")
+                        
+                        if "Precio Base" in primera_fila:
+                            precio_auto = float(limpiar_numero(primera_fila["Precio Base"]))
+                        
+                        if "Sabor" in df.columns:
+                            sabores_existentes = filas_prod["Sabor"].dropna().unique().tolist()
 
                 st.markdown(f"💰 **Precio Base Registrado:** ${precio_auto:,.2f}")
 
+                # Manejo inteligente de Sabor (Existente vs Nuevo)
+                tipo_sabor = "Sabor Existente"
+                if sabores_existentes:
+                    tipo_sabor = st.radio("¿El sabor ya está registrado para este producto o es nuevo?", ["Sabor Existente", "Sabor Nuevo"], horizontal=True)
+                else:
+                    st.info("No hay sabores previos registrados. Se registrará como un nuevo sabor.")
+                    tipo_sabor = "Sabor Nuevo"
+
+                sabor_final = ""
+                if tipo_sabor == "Sabor Existente" and sabores_existentes:
+                    sabor_final = st.selectbox("Seleccionar Sabor Existente", sabores_existentes)
+                else:
+                    sabor_final = st.text_input("Ingrese el Nombre del Nuevo Sabor")
+
                 col_e1, col_e2 = st.columns(2)
                 with col_e1:
-                    sabor_ingreso = st.text_input("Sabor a ingresar (opcional)")
                     suc_ingreso_ex = st.selectbox("Sucursal de Destino", ["Alem", "San Javier", "Hulk Gym"], key="suc_ex")
                 with col_e2:
                     cant_ingreso_ex = st.number_input("Cantidad a Ingresar", min_value=1, value=1, key="cant_ex")
 
-                btn_guardar_existente = st.form_submit_button("Sumar Stock a Producto Existente")
+                btn_guardar_existente = st.form_submit_button("Sumar Stock / Registrar Variante")
 
                 if btn_guardar_existente:
-                    payload = {
-                        "producto": nombre_real_existente if nombre_real_existente else prod_elegido,
-                        "stock": cant_ingreso_ex,
-                        "sucursal": suc_ingreso_ex,
-                        "sabor": sabor_ingreso,
-                        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "accion": "ingresar",
-                    }
-                    try:
-                        res = requests.post(WEB_APP_URL, json=payload)
-                        if res.status_code == 200:
-                            st.cache_data.clear()
-                            st.success(f"¡Stock sumado correctamente para '{prod_elegido}' en {suc_ingreso_ex}!")
-                            st.rerun()
+                    if tipo_sabor == "Sabor Nuevo" and not sabor_final.strip():
+                        st.warning("Debes ingresar el nombre del nuevo sabor.")
+                    else:
+                        # Si es sabor nuevo, generamos un nuevo ID y enviamos acción de ingresar nuevo registro
+                        if tipo_sabor == "Sabor Nuevo":
+                            nuevo_id = "SUP-001"
+                            if "ID" in df.columns and not df.empty:
+                                ids_numericos = []
+                                for i_val in df["ID"].dropna():
+                                    val_str = str(i_val)
+                                    digits = "".join(filter(str.isdigit, val_str))
+                                    if digits:
+                                        ids_numericos.append(int(digits))
+                                if ids_numericos:
+                                    nuevo_id = f"SUP-{max(ids_numericos) + 1:03d}"
+
+                            payload = {
+                                "accion": "ingresar_nuevo",
+                                "id": nuevo_id,
+                                "marca": marca_existente,
+                                "nombre": nombre_real_existente,
+                                "categoria": categoria_existente,
+                                "presentacion": presentacion_existente,
+                                "sabor": sabor_final.strip(),
+                                "precio_base": precio_auto,
+                                "sucursal": suc_ingreso_ex,
+                                "stock": cant_ingreso_ex,
+                                "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }
                         else:
-                            st.error("Error al registrar el ingreso en la planilla.")
-                    except Exception as e:
-                        st.error(f"Falla de conexión: {e}")
+                            # Si es sabor existente, simplemente sumamos stock al registro actual de ese sabor
+                            payload = {
+                                "producto": nombre_real_existente,
+                                "sabor": sabor_final,
+                                "stock": cant_ingreso_ex,
+                                "sucursal": suc_ingreso_ex,
+                                "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "accion": "ingresar",
+                            }
+
+                        try:
+                            res = requests.post(WEB_APP_URL, json=payload)
+                            if res.status_code == 200:
+                                st.cache_data.clear()
+                                st.success(f"¡Ingreso registrado con éxito para '{prod_elegido}' (Sabor: {sabor_final})!")
+                                st.rerun()
+                            else:
+                                st.error("Error al registrar el ingreso en la planilla.")
+                        except Exception as e:
+                            st.error(f"Falla de conexión: {e}")
 
     # -------------------------------------------------------------------------
     # 4. ELIMINAR MERCADERÍA
