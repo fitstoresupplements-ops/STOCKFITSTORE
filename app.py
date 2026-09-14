@@ -60,8 +60,8 @@ df = cargar_datos()
 columnas_requeridas = ["ID", "Marca", "Nombre", "Precio Base"]
 
 if not df.empty and any(col in df.columns for col in columnas_requeridas):
-    # Limpieza de columnas numéricas
-    cols_numericas = ["Precio Base", "San Javier", "Hulk Gym", "Stock Minimo", "Stock Total"]
+    # Limpieza de columnas numéricas (incluyendo nombres posibles de sucursales)
+    cols_numericas = ["Precio Base", "San Javier", "Hulk Gym", "Stock Minimo", "Stock Total", "Alem", "Jav"]
     for col in cols_numericas:
         if col in df.columns:
             df[col] = df[col].apply(limpiar_numero)
@@ -96,10 +96,14 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         st.subheader(f"Inventario Actual — Sucursal: {sucursal_sel}")
 
         df_inventario = df.copy()
-        if sucursal_sel == "San Javier" and "San Javier" in df_inventario.columns:
-            df_inventario = df_inventario[df_inventario['San Javier'] > 0]
-        elif sucursal_sel == "Hulk Gym" and "Hulk Gym" in df_inventario.columns:
-            df_inventario = df_inventario[df_inventario['Hulk Gym'] > 0]
+        if sucursal_sel == "San Javier":
+            col_sj = next((c for c in df_inventario.columns if "javier" in c.lower()), "San Javier")
+            if col_sj in df_inventario.columns:
+                df_inventario = df_inventario[df_inventario[col_sj] > 0]
+        elif sucursal_sel == "Hulk Gym":
+            col_hulk = next((c for c in df_inventario.columns if "hulk" in c.lower() or "gym" in c.lower()), "Hulk Gym")
+            if col_hulk in df_inventario.columns:
+                df_inventario = df_inventario[df_inventario[col_hulk] > 0]
 
         c1, c2, c3, c4 = st.columns(4)
         with c1:
@@ -136,15 +140,19 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         productos_disponibles = df["Producto_Display"].tolist() if "Producto_Display" in df.columns else []
         prod_seleccionado_display = st.selectbox("Producto (Marca - Nombre)", productos_disponibles, key="venta_producto")
 
-        # Mapeo estricto de la columna de stock según la sucursal seleccionada
-        # Si es Alem, buscamos la columna "Alem" (si existe en tu planilla) o por defecto "Stock Total"
+        # Búsqueda flexible de la columna de la sucursal correspondiente
         col_suc = "Stock Total"
+        columnas_disponibles = df.columns.tolist()
+        
         if sucursal_venta == "San Javier":
-            col_suc = "San Javier" if "San Javier" in df.columns else "Stock Total"
+            posible_col = next((c for c in columnas_disponibles if "javier" in c.lower()), None)
+            col_suc = posible_col if posible_col else "Stock Total"
         elif sucursal_venta == "Hulk Gym":
-            col_suc = "Hulk Gym" if "Hulk Gym" in df.columns else "Stock Total"
+            posible_col = next((c for c in columnas_disponibles if "hulk" in c.lower() or "gym" in c.lower()), None)
+            col_suc = posible_col if posible_col else "Stock Total"
         elif sucursal_venta == "Alem":
-            col_suc = "Alem" if "Alem" in df.columns else "Stock Total"
+            posible_col = next((c for c in columnas_disponibles if "alem" in c.lower()), None)
+            col_suc = posible_col if posible_col else "Stock Total"
 
         stock_actual = 0
         precio_base = 0.0
@@ -153,11 +161,12 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         if prod_seleccionado_display and not df.empty:
             fila_prod = df[df["Producto_Display"] == prod_seleccionado_display]
             if not fila_prod.empty:
-                nombre_real_prod = fila_prod["Nombre"].values[0]
+                nombre_real_prod = fila_prod["Nombre"].values[0] if "Nombre" in fila_prod.columns else ""
                 if col_suc in fila_prod.columns:
-                    stock_actual = int(fila_prod[col_suc].values[0])
+                    val_stock = fila_prod[col_suc].values[0]
+                    stock_actual = int(limpiar_numero(val_stock))
                 if "Precio Base" in fila_prod.columns:
-                    precio_base = float(fila_prod["Precio Base"].values[0])
+                    precio_base = float(limpiar_numero(fila_prod["Precio Base"].values[0]))
 
         # Cálculo automático del precio de venta según la sucursal seleccionada
         if sucursal_venta in ["Alem", "San Javier"]:
@@ -165,7 +174,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         else:  # Hulk Gym (Precio base dividido 0.9)
             precio_sugerido = precio_base / 0.9 if 0.9 > 0 else precio_base
 
-        st.info(f"Stock disponible en {sucursal_venta}: {stock_actual} unidades | **Precio Unitario Automático: ${precio_sugerido:,.2f}**")
+        st.info(f"Stock disponible en {sucursal_venta} (Columna detectada: {col_suc}): {stock_actual} unidades | **Precio Unitario Automático: ${precio_sugerido:,.2f}**")
 
         with st.form("form_venta_local"):
             cant_venta = st.number_input("Cantidad a Vender", min_value=1, max_value=max(1, stock_actual), step=1)
