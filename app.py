@@ -318,15 +318,14 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
 
             st.markdown(f"💰 **Precio Base Registrado:** ${precio_auto:,.2f}")
 
-            with st.form("form_ingreso_existente"):
-                # Manejo dinámico de Sabor según el producto seleccionado
-                if sabores_existentes:
-                    tipo_sabor = st.radio("¿El sabor ya está registrado para este producto o es nuevo?", ["Sabor Existente", "Sabor Nuevo"], horizontal=True, key="radio_tipo_sabor")
-                else:
-                    st.info("No hay sabores previos registrados para este producto. Se registrará como un nuevo sabor.")
-                    tipo_sabor = "Sabor Nuevo"
+            # Selector de tipo de sabor FUERA del formulario para que cambie el campo dinámicamente al instante
+            if sabores_existentes:
+                tipo_sabor = st.radio("¿El sabor ya está registrado para este producto o es un sabor nuevo?", ["Sabor Existente", "Sabor Nuevo"], horizontal=True, key="radio_tipo_sabor")
+            else:
+                st.info("No hay sabores previos registrados para este producto. Se registrará como un nuevo sabor.")
+                tipo_sabor = "Sabor Nuevo"
 
-                sabor_final = ""
+            with st.form("form_ingreso_existente"):
                 if tipo_sabor == "Sabor Existente" and sabores_existentes:
                     sabor_final = st.selectbox("Seleccionar Sabor Existente", sabores_existentes, key="select_sabor_existente")
                 else:
