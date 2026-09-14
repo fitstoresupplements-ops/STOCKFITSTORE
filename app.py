@@ -42,14 +42,15 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
     cols_numericas = ["Precio Base", "San Javier", "Hulk Gym", "Stock Minimo", "Stock Total"]
     for col in cols_numericas:
         if col in df.columns:
-            df[col] = pd.to_numeric(
-                df[col].astype(str)
-                .str.replace('$', '', regex=False)
-                .str.replace(' ', '', regex=False)
-                .str.replace('.', '', regex=False)
-                .str.replace(',', '.', regex=False),
-                errors="coerce"
-            ).fillna(0)
+            # Primero convertimos a string, quitamos símbolos de moneda y espacios
+            s = df[col].astype(str).str.replace('$', '', regex=False).str.strip()
+            
+            # Si el número viene con formato latino (ej: "28.999,00" o "28.999"):
+            # Reemplazamos los puntos de mil por nada y la coma decimal por punto.
+            # Si la planilla ya manda números limpios o strings estilo "28999", esto lo maneja bien.
+            s = s.str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+            
+            df[col] = pd.to_numeric(s, errors="coerce").fillna(0)
 
     # Menú de Pestañas Principales en la barra lateral
     st.sidebar.header("Menú de Navegación")
@@ -67,7 +68,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
 
     # Filtro global de sucursal adaptado a tus columnas
     sucursal_sel = st.sidebar.selectbox(
-        "Filtrar por Sucursal", ["Todas", "Alem", "Javier", "Hulk Gym"]
+        "Filtrar por Sucursal", ["Todas", "Alem", "San Javier", "Hulk Gym"]
     )
 
     # -------------------------------------------------------------------------
@@ -89,7 +90,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             unidades_totales = int(df_inventario["Stock Total"].sum()) if "Stock Total" in df_inventario.columns else 0
             st.metric(label="Unidades Totales", value=unidades_totales)
         with c3:
-            # Cálculo de valorización robusto garantizando valores numéricos limpios
             valor_inventario = 0
             if "Stock Total" in df_inventario.columns and "Precio Base" in df_inventario.columns:
                 valor_inventario = (df_inventario["Stock Total"] * df_inventario["Precio Base"]).sum()
@@ -113,40 +113,42 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
     elif pestana == "🛒 Registrar Venta":
         st.subheader("Registrar Venta y Descuento de Stock")
 
+        # Selectores fuera del form para que la interfaz se actualice de inmediato al cambiar los valores
+        sucursal_venta = st.selectbox("Punto de Venta", ["Alem", "San Javier", "Hulk Gym"], key="venta_sucursal")
+        
+        productos_disponibles = df["Nombre"].unique().tolist() if "Nombre" in df.columns else []
+        prod_seleccionado = st.selectbox("Producto", productos_disponibles, key="venta_producto")
+
+        # Mapear sucursal a la columna correspondiente de stock
+        col_suc = "Stock Total"
+        if sucursal_venta == "Alem" and "Stock Total" in df.columns:
+            col_suc = "Stock Total" # O la columna específica de Alem si existiera, ej: "Alem"
+        elif sucursal_venta == "San Javier" and "San Javier" in df.columns:
+            col_suc = "San Javier"
+        elif sucursal_venta == "Hulk Gym" and "Hulk Gym" in df.columns:
+            col_suc = "Hulk Gym"
+
+        # Obtener stock actual y precio base del producto seleccionado en tiempo real
+        stock_actual = 0
+        precio_base = 0.0
+        if prod_seleccionado and not df.empty:
+            fila_prod = df[df["Nombre"] == prod_seleccionado]
+            if not fila_prod.empty:
+                if col_suc in fila_prod.columns:
+                    stock_actual = int(fila_prod[col_suc].values[0])
+                if "Precio Base" in fila_prod.columns:
+                    precio_base = float(fila_prod["Precio Base"].values[0])
+
+        # Cálculo automático del precio de venta según la sucursal seleccionada
+        if sucursal_venta in ["Alem", "San Javier"]:
+            precio_sugerido = precio_base
+        else:  # Hulk Gym (Precio base dividido 0.9)
+            precio_sugerido = precio_base / 0.9 if 0.9 > 0 else precio_base
+
+        st.info(f"Stock disponible en {sucursal_venta}: {stock_actual} unidades | **Precio Unitario Automático: ${precio_sugerido:,.2f}**")
+
         with st.form("form_venta_local"):
-            sucursal_venta = st.selectbox("Punto de Venta", ["Alem", "San Javier", "Hulk Gym"])
-            
-            # Mapear sucursal a la columna correspondiente de stock
-            col_suc = "Stock Total"
-            if sucursal_venta == "San Javier" and "San Javier" in df.columns:
-                col_suc = "San Javier"
-            elif sucursal_venta == "Hulk Gym" and "Hulk Gym" in df.columns:
-                col_suc = "Hulk Gym"
-
-            productos_disponibles = df["Nombre"].unique().tolist() if "Nombre" in df.columns else []
-            prod_seleccionado = st.selectbox("Producto", productos_disponibles)
-
-            # Obtener stock actual y precio base del producto seleccionado
-            stock_actual = 0
-            precio_base = 0.0
-            if prod_seleccionado and not df.empty:
-                fila_prod = df[df["Nombre"] == prod_seleccionado]
-                if not fila_prod.empty:
-                    if col_suc in fila_prod.columns:
-                        stock_actual = int(fila_prod[col_suc].values[0])
-                    if "Precio Base" in fila_prod.columns:
-                        precio_base = float(fila_prod["Precio Base"].values[0])
-
-            # Cálculo automático del precio de venta según la sucursal seleccionada
-            if sucursal_venta in ["Alem", "San Javier"]:
-                precio_sugerido = precio_base
-            else:  # Hulk Gym
-                precio_sugerido = precio_base / 0.9 if 0.9 > 0 else precio_base
-
-            st.info(f"Stock disponible en {sucursal_venta}: {stock_actual} unidades | **Precio Unitario Automático: ${precio_sugerido:,.2f}**")
-
             cant_venta = st.number_input("Cantidad a Vender", min_value=1, max_value=max(1, stock_actual), step=1)
-
             btn_registrar_venta = st.form_submit_button("Confirmar y Descontar Stock")
 
             if btn_registrar_venta:
@@ -342,8 +344,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
 else:
     st.warning(
         "La planilla de Google Sheets no coincide con la estructura esperada"
-        " (se buscan columnas como 'ID', 'Marca', 'Nombre', 'Precio Base"
-        " Alem')."
+        " (se buscan columnas como 'ID', 'Marca', 'Nombre', 'Precio Base')."
     )
     st.info(
         "Revisá que la primera fila de tu Google Sheet mantenga los encabezados"
