@@ -66,9 +66,16 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         if col in df.columns:
             df[col] = df[col].apply(limpiar_numero)
 
-    # Crear columna combinada "Marca - Nombre"
+    # Crear columna combinada "Marca - Nombre - Sabor"
     if "Marca" in df.columns and "Nombre" in df.columns:
-        df["Producto_Display"] = df["Marca"].astype(str) + " - " + df["Nombre"].astype(str)
+        if "Sabor" in df.columns:
+            df["Sabor_Clean"] = df["Sabor"].fillna("").astype(str).str.strip()
+            df["Producto_Display"] = df.apply(
+                lambda row: f"{row['Marca']} - {row['Nombre']}" + (f" - {row['Sabor_Clean']}" if row['Sabor_Clean'] and row['Sabor_Clean'].lower() != 'nan' else ""),
+                axis=1
+            )
+        else:
+            df["Producto_Display"] = df["Marca"].astype(str) + " - " + df["Nombre"].astype(str)
     else:
         df["Producto_Display"] = df["Nombre"].astype(str) if "Nombre" in df.columns else df.index.astype(str)
 
@@ -138,7 +145,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         sucursal_venta = st.selectbox("Punto de Venta", ["Alem", "San Javier", "Hulk Gym"], key="venta_sucursal")
         
         productos_disponibles = df["Producto_Display"].tolist() if "Producto_Display" in df.columns else []
-        prod_seleccionado_display = st.selectbox("Producto (Marca - Nombre)", productos_disponibles, key="venta_producto")
+        prod_seleccionado_display = st.selectbox("Producto (Marca - Nombre - Sabor)", productos_disponibles, key="venta_producto")
 
         # Búsqueda flexible de la columna de la sucursal correspondiente
         col_suc = "Stock Total"
@@ -399,7 +406,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             productos_lista = df["Producto_Display"].tolist()
             with st.form("form_eliminar"):
                 prod_a_borrar_display = st.selectbox(
-                    "Seleccionar Producto (Marca - Nombre)", productos_lista
+                    "Seleccionar Producto (Marca - Nombre - Sabor)", productos_lista
                 )
                 
                 nombre_baja_real = prod_a_borrar_display
