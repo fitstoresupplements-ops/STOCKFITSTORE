@@ -208,47 +208,32 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             btn_registrar_venta = st.form_submit_button("Confirmar y Descontar Stock")
 
             if btn_registrar_venta:
-                if cant_venta > stock_actual:
-                    st.error("No hay suficiente stock para realizar la venta en esta sucursal.")
-                else:
-                    total_venta = cant_venta * precio_sugerido
+                                if cant_venta > stock_actual:
+                                    st.error("No hay suficiente stock para realizar la venta en esta sucursal.")
+                                else:
+                                    total_venta = cant_venta * precio_sugerido
 
-                    nueva_venta = {
-                        'Fecha': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        'Punto de Venta': sucursal_venta,
-                        'Producto': prod_seleccionado_display,
-                        'Cantidad': cant_venta,
-                        'Total': total_venta
-                    }
-                    
-                    if 'ventas' not in st.session_state:
-                        st.session_state['ventas'] = pd.DataFrame(columns=['Fecha', 'Punto de Venta', 'Producto', 'Cantidad', 'Total'])
-                    
-                    st.session_state['ventas'] = pd.concat([st.session_state['ventas'], pd.DataFrame([nueva_venta])], ignore_index=True)
+                                    payload = {
+                                        "accion": "descontar",
+                                        "id": str(id_real_prod),
+                                        "producto": str(nombre_real_prod),
+                                        "sabor": str(sabor_real_prod),
+                                        "stock": -abs(cant_venta),
+                                        "sucursal": sucursal_venta,
+                                        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                    }
+                                    try:
+                                        res = requests.post(WEB_APP_URL, json=payload)
+                                        st.write("Código de estado:", res.status_code)
+                                        st.write("Respuesta exacta de Google:", res.text)
 
-                    payload = {
-                        "accion": "descontar",
-                        "id": str(id_real_prod),
-                        "producto": str(nombre_real_prod),
-                        "sabor": str(sabor_real_prod),
-                        "stock": -abs(cant_venta),
-                        "sucursal": sucursal_venta,
-                        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    }
-                    try:
-                            res = requests.post(WEB_APP_URL, json=payload)
-                            
-                            st.write("Código de estado:", res.status_code)
-                            st.write("Respuesta exacta de Google:", res.text)
-
-                            if res.status_code == 200:
-                                st.cache_data.clear()
-                                st.success(f"¡Venta registrada con éxito! Stock descontado de {sucursal_venta}. Total: ${total_venta:,.2f}")
-                                st.rerun()
-                            else:
-                                st.error("Venta registrada localmente pero hubo un error al sincronizar con Google Sheets.")
-                        except Exception as e:
-                            st.error(f"Falla de conexión: {e}")
+                                        if res.status_code == 200:
+                                            st.cache_data.clear()
+                                            st.success(f"¡Venta registrada con éxito!")
+                                        else:
+                                            st.error("Error al sincronizar con Google Sheets.")
+                                    except Exception as e:
+                                        st.error(f"Falla de conexión: {e}")
     # -------------------------------------------------------------------------
     # 3. REGISTRAR INGRESOS (NUEVO VS EXISTENTE)
     # -------------------------------------------------------------------------
