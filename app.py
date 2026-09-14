@@ -16,7 +16,6 @@ st.title("Fit Store Supplements — Control Total de Operaciones")
 st.markdown("---")
 
 
-# Función para limpiar valores monetarios y numéricos de forma robusta (Evita errores de puntos/comas)
 def limpiar_numero(valor):
     if pd.isna(valor):
         return 0.0
@@ -24,23 +23,15 @@ def limpiar_numero(valor):
     if not val_str or val_str == '$':
         return 0.0
     
-    # Limpiar símbolos de moneda y espacios
     val_str = val_str.replace('$', '').replace(' ', '')
     
-    # Si tiene formato con puntos como miles y coma como decimal (ej: 28.999,50 o 28.999)
     if ',' in val_str and '.' in val_str:
         val_str = val_str.replace('.', '').replace(',', '.')
     elif '.' in val_str:
-        # Analizar si el punto es de mil o decimal basándose en la posición o cantidad de dígitos
         partes = val_str.split('.')
         if len(partes) > 2 or (len(partes) == 2 and len(partes[1]) == 3):
-            # Es separador de miles (ej: 28.999)
             val_str = val_str.replace('.', '')
-        else:
-            # Es decimal (ej: 28.99)
-            pass
     elif ',' in val_str:
-        # Si solo tiene coma, asumimos que es decimal latino
         val_str = val_str.replace(',', '.')
 
     try:
@@ -49,7 +40,6 @@ def limpiar_numero(valor):
         return 0.0
 
 
-# Función para cargar datos optimizada con caché
 @st.cache_data(ttl=5)
 def cargar_datos():
     try:
@@ -67,23 +57,21 @@ def cargar_datos():
 
 df = cargar_datos()
 
-# Verificación de columnas clave según tu planilla actual
 columnas_requeridas = ["ID", "Marca", "Nombre", "Precio Base"]
 
 if not df.empty and any(col in df.columns for col in columnas_requeridas):
-    # Aplicar la limpieza robusta a todas las columnas numéricas
+    # Limpieza de columnas numéricas
     cols_numericas = ["Precio Base", "San Javier", "Hulk Gym", "Stock Minimo", "Stock Total"]
     for col in cols_numericas:
         if col in df.columns:
             df[col] = df[col].apply(limpiar_numero)
 
-    # Crear una columna combinada para mostrar "Marca - Nombre" en toda la app
+    # Crear columna combinada "Marca - Nombre"
     if "Marca" in df.columns and "Nombre" in df.columns:
         df["Producto_Display"] = df["Marca"].astype(str) + " - " + df["Nombre"].astype(str)
     else:
         df["Producto_Display"] = df["Nombre"].astype(str) if "Nombre" in df.columns else df.index.astype(str)
 
-    # Menú de Pestañas Principales en la barra lateral
     st.sidebar.header("Menú de Navegación")
     pestana = st.sidebar.radio(
         "Seleccionar Sección",
@@ -97,7 +85,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         ],
     )
 
-    # Filtro global de sucursal adaptado a tus columnas
     sucursal_sel = st.sidebar.selectbox(
         "Filtrar por Sucursal", ["Todas", "Alem", "San Javier", "Hulk Gym"]
     )
@@ -136,7 +123,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             st.metric(label="Alertas de Stock Bajo", value=stock_critico)
 
         st.markdown("---")
-        # Ocultar o mostrar columnas técnicas si es necesario, dejamos la tabla limpia
         st.dataframe(df_inventario, use_container_width=True, hide_index=True)
 
     # -------------------------------------------------------------------------
@@ -145,18 +131,20 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
     elif pestana == "🛒 Registrar Venta":
         st.subheader("Registrar Venta y Descuento de Stock")
 
-        # Selectores fuera del form para actualizar en tiempo real
         sucursal_venta = st.selectbox("Punto de Venta", ["Alem", "San Javier", "Hulk Gym"], key="venta_sucursal")
         
         productos_disponibles = df["Producto_Display"].tolist() if "Producto_Display" in df.columns else []
         prod_seleccionado_display = st.selectbox("Producto (Marca - Nombre)", productos_disponibles, key="venta_producto")
 
-        # Obtener el nombre real o la fila correspondiente
+        # Mapeo estricto de la columna de stock según la sucursal seleccionada
+        # Si es Alem, buscamos la columna "Alem" (si existe en tu planilla) o por defecto "Stock Total"
         col_suc = "Stock Total"
-        if sucursal_venta == "San Javier" and "San Javier" in df.columns:
-            col_suc = "San Javier"
-        elif sucursal_venta == "Hulk Gym" and "Hulk Gym" in df.columns:
-            col_suc = "Hulk Gym"
+        if sucursal_venta == "San Javier":
+            col_suc = "San Javier" if "San Javier" in df.columns else "Stock Total"
+        elif sucursal_venta == "Hulk Gym":
+            col_suc = "Hulk Gym" if "Hulk Gym" in df.columns else "Stock Total"
+        elif sucursal_venta == "Alem":
+            col_suc = "Alem" if "Alem" in df.columns else "Stock Total"
 
         stock_actual = 0
         precio_base = 0.0
@@ -189,7 +177,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                 else:
                     total_venta = cant_venta * precio_sugerido
 
-                    # Registrar en el historial de sesión
                     nueva_venta = {
                         'Fecha': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                         'Punto de Venta': sucursal_venta,
@@ -203,7 +190,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     
                     st.session_state['ventas'] = pd.concat([st.session_state['ventas'], pd.DataFrame([nueva_venta])], ignore_index=True)
 
-                    # Enviar payload para actualizar en Google Apps Script
                     payload = {
                         "producto": nombre_real_prod,
                         "stock": -abs(cant_venta),
@@ -281,7 +267,6 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     "Seleccionar Producto (Marca - Nombre)", productos_lista
                 )
                 
-                # Obtener nombre real
                 nombre_baja_real = prod_a_borrar_display
                 fila_baja = df[df["Producto_Display"] == prod_a_borrar_display]
                 if not fila_baja.empty and "Nombre" in fila_baja.columns:
