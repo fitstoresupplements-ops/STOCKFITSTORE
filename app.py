@@ -10,7 +10,7 @@ st.set_page_config(
 )
 
 # Tu nueva URL oficial de Google Apps Script
-WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxkzHkM0Et4WfNkBUd4KX6Kp3dGwiukr7UN3KVgUMf5FDLAFvAq88tV1nWMD5Dg_an-7g/exec"
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyyDiaXjaNoRjjLCOfEak2amhVdtmviAgXc7WXS19f2eV-ij5M8gudaBgpqFlWy2dPNKQ/exec"
 
 st.title("Fit Store Supplements — Control Total de Operaciones")
 st.markdown("---")
