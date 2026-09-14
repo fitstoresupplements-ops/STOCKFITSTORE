@@ -237,6 +237,9 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     }
                     try:
                         res = requests.post(WEB_APP_URL, json=payload)
+st.write("Código de estado:", res.status_code)
+   
+ st.write("Respuesta exacta de Google:", res.text)
                         if res.status_code == 200:
                             st.cache_data.clear()
                             st.success(f"¡Venta registrada con éxito! Stock descontado de {sucursal_venta}. Total: ${total_venta:,.2f}")
