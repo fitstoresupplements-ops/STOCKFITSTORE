@@ -164,11 +164,16 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         stock_actual = 0
         precio_base = 0.0
         nombre_real_prod = ""
+        sabor_real_prod = ""
+        id_real_prod = ""
         
         if prod_seleccionado_display and not df.empty:
             fila_prod = df[df["Producto_Display"] == prod_seleccionado_display]
             if not fila_prod.empty:
                 nombre_real_prod = fila_prod["Nombre"].values[0] if "Nombre" in fila_prod.columns else ""
+                sabor_real_prod = fila_prod["Sabor"].values[0] if "Sabor" in fila_prod.columns else ""
+                id_real_prod = fila_prod["ID"].values[0] if "ID" in fila_prod.columns else ""
+                
                 if col_suc in fila_prod.columns:
                     val_stock = fila_prod[col_suc].values[0]
                     stock_actual = int(limpiar_numero(val_stock))
@@ -206,12 +211,15 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     
                     st.session_state['ventas'] = pd.concat([st.session_state['ventas'], pd.DataFrame([nueva_venta])], ignore_index=True)
 
+                    # Payload mejorado con ID, Nombre y Sabor exacto para que Apps Script ubique la variante correcta
                     payload = {
-                        "producto": nombre_real_prod,
+                        "accion": "descontar",
+                        "id": str(id_real_prod),
+                        "producto": str(nombre_real_prod),
+                        "sabor": str(sabor_real_prod),
                         "stock": -abs(cant_venta),
                         "sucursal": sucursal_venta,
                         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "accion": "descontar",
                     }
                     try:
                         res = requests.post(WEB_APP_URL, json=payload)
@@ -306,6 +314,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             marca_existente = ""
             categoria_existente = ""
             presentacion_existente = ""
+            id_existente = ""
             sabores_existentes = []
 
             if prod_elegido and not df.empty:
@@ -316,6 +325,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     marca_existente = primera_fila.get("Marca", "")
                     categoria_existente = primera_fila.get("Categoría" if "Categoría" in df.columns else "Categoria", "")
                     presentacion_existente = primera_fila.get("Presentacion" if "Presentacion" in df.columns else "Presentación", "")
+                    id_existente = primera_fila.get("ID", "")
                     
                     if "Precio Base" in primera_fila:
                         precio_auto = float(limpiar_numero(primera_fila["Precio Base"]))
@@ -377,12 +387,13 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                             }
                         else:
                             payload = {
-                                "producto": nombre_real_existente,
-                                "sabor": sabor_final,
+                                "accion": "ingresar",
+                                "id": str(id_existente),
+                                "producto": str(nombre_real_existente),
+                                "sabor": str(sabor_final),
                                 "stock": cant_ingreso_ex,
                                 "sucursal": suc_ingreso_ex,
                                 "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "accion": "ingresar",
                             }
 
                         try:
@@ -410,9 +421,17 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                 )
                 
                 nombre_baja_real = prod_a_borrar_display
+                sabor_baja_real = ""
+                id_baja_real = ""
+                
                 fila_baja = df[df["Producto_Display"] == prod_a_borrar_display]
-                if not fila_baja.empty and "Nombre" in fila_baja.columns:
-                    nombre_baja_real = fila_baja["Nombre"].values[0]
+                if not fila_baja.empty:
+                    if "Nombre" in fila_baja.columns:
+                        nombre_baja_real = fila_baja["Nombre"].values[0]
+                    if "Sabor" in fila_baja.columns:
+                        sabor_baja_real = fila_baja["Sabor"].values[0]
+                    if "ID" in fila_baja.columns:
+                        id_baja_real = fila_baja["ID"].values[0]
 
                 motivo_baja = st.selectbox(
                     "Motivo", ["Venta Realizada", "Merma / Daño", "Ajuste de Inventario"]
@@ -425,11 +444,13 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
 
                 if btn_eliminar:
                     payload = {
-                        "producto": nombre_baja_real,
+                        "accion": "descontar",
+                        "id": str(id_baja_real),
+                        "producto": str(nombre_baja_real),
+                        "sabor": str(sabor_baja_real),
                         "stock": -abs(cant_retiro),
                         "sucursal": sucursal_sel if sucursal_sel != "Todas" else "Alem",
                         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "accion": "descontar",
                     }
                     res = requests.post(WEB_APP_URL, json=payload)
                     if res.status_code == 200:
