@@ -60,7 +60,7 @@ df = cargar_datos()
 columnas_requeridas = ["ID", "Marca", "Nombre", "Precio Base"]
 
 if not df.empty and any(col in df.columns for col in columnas_requeridas):
-    # Limpieza de columnas numéricas (incluyendo nombres posibles de sucursales)
+    # Limpieza de columnas numéricas
     cols_numericas = ["Precio Base", "San Javier", "Hulk Gym", "Stock Minimo", "Stock Total", "Alem", "Jav"]
     for col in cols_numericas:
         if col in df.columns:
@@ -174,7 +174,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         else:  # Hulk Gym (Precio base dividido 0.9)
             precio_sugerido = precio_base / 0.9 if 0.9 > 0 else precio_base
 
-        st.info(f"Stock disponible en {sucursal_venta} (Columna detectada: {col_suc}): {stock_actual} unidades | **Precio Unitario Automático: ${precio_sugerido:,.2f}**")
+        st.info(f"Stock disponible en {sucursal_venta}: {stock_actual} unidades | **Precio Unitario Automático: ${precio_sugerido:,.2f}**")
 
         with st.form("form_venta_local"):
             cant_venta = st.number_input("Cantidad a Vender", min_value=1, max_value=max(1, stock_actual), step=1)
@@ -218,33 +218,108 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                         st.error(f"Falla de conexión: {e}")
 
     # -------------------------------------------------------------------------
-    # 3. REGISTRAR INGRESOS
+    # 3. REGISTRAR INGRESOS (NUEVO VS EXISTENTE)
     # -------------------------------------------------------------------------
     elif pestana == "📥 Registrar Ingresos":
         st.subheader("Registro de Nuevos Ingresos de Mercadería")
 
-        with st.form("form_ingresos"):
-            col_a, col_b = st.columns(2)
-            with col_a:
-                prod_ingreso = st.text_input("Nombre del Suplemento / Producto")
-                suc_ingreso = st.selectbox(
-                    "Sucursal de Destino", ["Alem", "San Javier", "Hulk Gym"]
-                )
-            with col_b:
-                cant_ingreso = st.number_input("Cantidad a Ingresar", min_value=1, value=1)
-                precio_ingreso = st.number_input(
-                    "Precio Unitario ($)", min_value=0.0, value=0.0, step=100.0
-                )
+        tipo_ingreso = st.radio("Tipo de Ingreso", ["Producto Existente", "Producto Nuevo"], horizontal=True)
 
-            btn_ingreso = st.form_submit_button("Confirmar Ingreso de Stock")
+        if tipo_ingreso == "Producto Nuevo":
+            # Generar ID automático correlativo (ej. SUP-005 basándose en SUP-004 o cantidad de filas)
+            nuevo_id = "SUP-001"
+            if "ID" in df.columns and not df.empty:
+                ids_numericos = []
+                for i_val in df["ID"].dropna():
+                    val_str = str(i_val)
+                    digits = "".join(filter(str.isdigit, val_str))
+                    if digits:
+                        ids_numericos.append(int(digits))
+                if ids_numericos:
+                    nuevo_id = f"SUP-{max(ids_numericos) + 1:03d}"
 
-            if btn_ingreso:
-                if prod_ingreso:
+            st.info(f"🆔 ID Asignado Automáticamente: **{nuevo_id}**")
+
+            with st.form("form_ingreso_nuevo"):
+                col_n1, col_n2 = st.columns(2)
+                with col_n1:
+                    marca_nuevo = st.text_input("Marca (ej. ENA, Star Nutrition)")
+                    nombre_nuevo = st.text_input("Nombre del Producto")
+                    categoria_nuevo = st.text_input("Categoría (ej. Creatina, Proteína)")
+                with col_n2:
+                    presentacion_nuevo = st.text_input("Presentación (ej. 300g, 60 caps)")
+                    sabor_nuevo = st.text_input("Sabor")
+                    precio_base_nuevo = st.number_input("Precio Base ($)", min_value=0.0, step=100.0)
+
+                col_n3, col_n4 = st.columns(2)
+                with col_n3:
+                    suc_ingreso_nuevo = st.selectbox("Sucursal de Destino", ["Alem", "San Javier", "Hulk Gym"], key="suc_nue")
+                with col_n4:
+                    cant_ingreso_nuevo = st.number_input("Cantidad a Ingresar", min_value=1, value=1, key="cant_nue")
+
+                btn_guardar_nuevo = st.form_submit_button("Registrar Nuevo Producto y Stock")
+
+                if btn_guardar_nuevo:
+                    if nombre_nuevo:
+                        payload = {
+                            "accion": "ingresar_nuevo",
+                            "id": nuevo_id,
+                            "marca": marca_nuevo,
+                            "nombre": nombre_nuevo,
+                            "categoria": categoria_nuevo,
+                            "presentacion": presentacion_nuevo,
+                            "sabor": sabor_nuevo,
+                            "precio_base": precio_base_nuevo,
+                            "sucursal": suc_ingreso_nuevo,
+                            "stock": cant_ingreso_nuevo,
+                            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                        try:
+                            res = requests.post(WEB_APP_URL, json=payload)
+                            if res.status_code == 200:
+                                st.cache_data.clear()
+                                st.success(f"¡Nuevo producto '{marca_nuevo} - {nombre_nuevo}' registrado con éxito!")
+                                st.rerun()
+                            else:
+                                st.error("Error al registrar el producto nuevo en la planilla.")
+                        except Exception as e:
+                            st.error(f"Falla de conexión: {e}")
+                    else:
+                        st.warning("El nombre del producto es obligatorio.")
+
+        else:  # Producto Existente
+            productos_lista = df["Producto_Display"].tolist() if "Producto_Display" in df.columns else []
+            
+            with st.form("form_ingreso_existente"):
+                prod_elegido = st.selectbox("Seleccionar Producto Existente", productos_lista)
+                
+                # Obtener precio base automático del producto seleccionado
+                precio_auto = 0.0
+                nombre_real_existente = ""
+                if prod_elegido and not df.empty:
+                    fila_ex = df[df["Producto_Display"] == prod_elegido]
+                    if not fila_ex.empty:
+                        nombre_real_existente = fila_ex["Nombre"].values[0] if "Nombre" in fila_ex.columns else ""
+                        if "Precio Base" in fila_ex.columns:
+                            precio_auto = float(limpiar_numero(fila_ex["Precio Base"].values[0]))
+
+                st.markdown(f"💰 **Precio Base Registrado:** ${precio_auto:,.2f}")
+
+                col_e1, col_e2 = st.columns(2)
+                with col_e1:
+                    sabor_ingreso = st.text_input("Sabor a ingresar (opcional)")
+                    suc_ingreso_ex = st.selectbox("Sucursal de Destino", ["Alem", "San Javier", "Hulk Gym"], key="suc_ex")
+                with col_e2:
+                    cant_ingreso_ex = st.number_input("Cantidad a Ingresar", min_value=1, value=1, key="cant_ex")
+
+                btn_guardar_existente = st.form_submit_button("Sumar Stock a Producto Existente")
+
+                if btn_guardar_existente:
                     payload = {
-                        "producto": prod_ingreso,
-                        "stock": cant_ingreso,
-                        "sucursal": suc_ingreso,
-                        "precio": precio_ingreso,
+                        "producto": nombre_real_existente if nombre_real_existente else prod_elegido,
+                        "stock": cant_ingreso_ex,
+                        "sucursal": suc_ingreso_ex,
+                        "sabor": sabor_ingreso,
                         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "accion": "ingresar",
                     }
@@ -252,16 +327,12 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                         res = requests.post(WEB_APP_URL, json=payload)
                         if res.status_code == 200:
                             st.cache_data.clear()
-                            st.success(
-                                f"¡Ingreso registrado correctamente para '{prod_ingreso}'!"
-                            )
+                            st.success(f"¡Stock sumado correctamente para '{prod_elegido}' en {suc_ingreso_ex}!")
                             st.rerun()
                         else:
-                            st.error("Error al registrar en la planilla.")
+                            st.error("Error al registrar el ingreso en la planilla.")
                     except Exception as e:
                         st.error(f"Falla de conexión: {e}")
-                else:
-                    st.warning("El nombre del producto es obligatorio.")
 
     # -------------------------------------------------------------------------
     # 4. ELIMINAR MERCADERÍA
