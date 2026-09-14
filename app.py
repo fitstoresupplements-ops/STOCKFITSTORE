@@ -16,6 +16,39 @@ st.title("Fit Store Supplements — Control Total de Operaciones")
 st.markdown("---")
 
 
+# Función para limpiar valores monetarios y numéricos de forma robusta (Evita errores de puntos/comas)
+def limpiar_numero(valor):
+    if pd.isna(valor):
+        return 0.0
+    val_str = str(valor).strip()
+    if not val_str or val_str == '$':
+        return 0.0
+    
+    # Limpiar símbolos de moneda y espacios
+    val_str = val_str.replace('$', '').replace(' ', '')
+    
+    # Si tiene formato con puntos como miles y coma como decimal (ej: 28.999,50 o 28.999)
+    if ',' in val_str and '.' in val_str:
+        val_str = val_str.replace('.', '').replace(',', '.')
+    elif '.' in val_str:
+        # Analizar si el punto es de mil o decimal basándose en la posición o cantidad de dígitos
+        partes = val_str.split('.')
+        if len(partes) > 2 or (len(partes) == 2 and len(partes[1]) == 3):
+            # Es separador de miles (ej: 28.999)
+            val_str = val_str.replace('.', '')
+        else:
+            # Es decimal (ej: 28.99)
+            pass
+    elif ',' in val_str:
+        # Si solo tiene coma, asumimos que es decimal latino
+        val_str = val_str.replace(',', '.')
+
+    try:
+        return float(val_str)
+    except ValueError:
+        return 0.0
+
+
 # Función para cargar datos optimizada con caché
 @st.cache_data(ttl=5)
 def cargar_datos():
@@ -38,26 +71,17 @@ df = cargar_datos()
 columnas_requeridas = ["ID", "Marca", "Nombre", "Precio Base"]
 
 if not df.empty and any(col in df.columns for col in columnas_requeridas):
-    # Limpieza profunda y conversión estricta de columnas numéricas (precios y stock)
-    cols_precios = ["Precio Base"]
-    for col in cols_precios:
+    # Aplicar la limpieza robusta a todas las columnas numéricas
+    cols_numericas = ["Precio Base", "San Javier", "Hulk Gym", "Stock Minimo", "Stock Total"]
+    for col in cols_numericas:
         if col in df.columns:
-            # Limpiamos símbolos y manejamos de forma segura el formato de miles y decimales
-            s = df[col].astype(str).str.replace('$', '', regex=False).str.strip()
-            # Si el valor tiene comas y puntos, estandarizamos a punto decimal
-            s = s.str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-            df[col] = pd.to_numeric(s, errors="coerce").fillna(0)
+            df[col] = df[col].apply(limpiar_numero)
 
-    # Limpieza estricta de columnas de stock por sucursal para evitar valores fantasma (como el 1 en San Javier)
-    cols_stock = ["San Javier", "Hulk Gym", "Stock Minimo", "Stock Total"]
-    for col in cols_stock:
-        if col in df.columns:
-            s = df[col].astype(str).str.replace('$', '', regex=False).str.strip()
-            s = s.str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
-            df[col] = pd.to_numeric(s, errors="coerce").fillna(0).astype(int)
-        else:
-            # Si la columna no viniera en el JSON, la creamos en 0 para evitar errores
-            df[col] = 0
+    # Crear una columna combinada para mostrar "Marca - Nombre" en toda la app
+    if "Marca" in df.columns and "Nombre" in df.columns:
+        df["Producto_Display"] = df["Marca"].astype(str) + " - " + df["Nombre"].astype(str)
+    else:
+        df["Producto_Display"] = df["Nombre"].astype(str) if "Nombre" in df.columns else df.index.astype(str)
 
     # Menú de Pestañas Principales en la barra lateral
     st.sidebar.header("Menú de Navegación")
@@ -112,6 +136,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             st.metric(label="Alertas de Stock Bajo", value=stock_critico)
 
         st.markdown("---")
+        # Ocultar o mostrar columnas técnicas si es necesario, dejamos la tabla limpia
         st.dataframe(df_inventario, use_container_width=True, hide_index=True)
 
     # -------------------------------------------------------------------------
@@ -123,24 +148,24 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
         # Selectores fuera del form para actualizar en tiempo real
         sucursal_venta = st.selectbox("Punto de Venta", ["Alem", "San Javier", "Hulk Gym"], key="venta_sucursal")
         
-        productos_disponibles = df["Nombre"].unique().tolist() if "Nombre" in df.columns else []
-        prod_seleccionado = st.selectbox("Producto", productos_disponibles, key="venta_producto")
+        productos_disponibles = df["Producto_Display"].tolist() if "Producto_Display" in df.columns else []
+        prod_seleccionado_display = st.selectbox("Producto (Marca - Nombre)", productos_disponibles, key="venta_producto")
 
-        # Mapear sucursal a la columna correspondiente con validación estricta
+        # Obtener el nombre real o la fila correspondiente
         col_suc = "Stock Total"
         if sucursal_venta == "San Javier" and "San Javier" in df.columns:
             col_suc = "San Javier"
         elif sucursal_venta == "Hulk Gym" and "Hulk Gym" in df.columns:
             col_suc = "Hulk Gym"
-        elif sucursal_venta == "Alem" and "Stock Total" in df.columns:
-            col_suc = "Stock Total"
 
-        # Obtener stock actual y precio base del producto seleccionado en tiempo real
         stock_actual = 0
         precio_base = 0.0
-        if prod_seleccionado and not df.empty:
-            fila_prod = df[df["Nombre"] == prod_seleccionado]
+        nombre_real_prod = ""
+        
+        if prod_seleccionado_display and not df.empty:
+            fila_prod = df[df["Producto_Display"] == prod_seleccionado_display]
             if not fila_prod.empty:
+                nombre_real_prod = fila_prod["Nombre"].values[0]
                 if col_suc in fila_prod.columns:
                     stock_actual = int(fila_prod[col_suc].values[0])
                 if "Precio Base" in fila_prod.columns:
@@ -159,9 +184,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
             btn_registrar_venta = st.form_submit_button("Confirmar y Descontar Stock")
 
             if btn_registrar_venta:
-                if stock_actual <= 0:
-                    st.error(f"No hay stock disponible de '{prod_seleccionado}' en la sucursal {sucursal_venta}.")
-                elif cant_venta > stock_actual:
+                if cant_venta > stock_actual:
                     st.error("No hay suficiente stock para realizar la venta en esta sucursal.")
                 else:
                     total_venta = cant_venta * precio_sugerido
@@ -170,7 +193,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     nueva_venta = {
                         'Fecha': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                         'Punto de Venta': sucursal_venta,
-                        'Producto': prod_seleccionado,
+                        'Producto': prod_seleccionado_display,
                         'Cantidad': cant_venta,
                         'Total': total_venta
                     }
@@ -182,7 +205,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
 
                     # Enviar payload para actualizar en Google Apps Script
                     payload = {
-                        "producto": prod_seleccionado,
+                        "producto": nombre_real_prod,
                         "stock": -abs(cant_venta),
                         "sucursal": sucursal_venta,
                         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -251,12 +274,19 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
     elif pestana == "🗑️ Eliminar Mercadería":
         st.subheader("Baja o Retiro de Mercadería del Inventario")
 
-        if not df.empty and "Nombre" in df.columns:
-            productos_lista = df["Nombre"].unique().tolist()
+        if not df.empty and "Producto_Display" in df.columns:
+            productos_lista = df["Producto_Display"].tolist()
             with st.form("form_eliminar"):
-                prod_a_borrar = st.selectbox(
-                    "Seleccionar Producto", productos_lista
+                prod_a_borrar_display = st.selectbox(
+                    "Seleccionar Producto (Marca - Nombre)", productos_lista
                 )
+                
+                # Obtener nombre real
+                nombre_baja_real = prod_a_borrar_display
+                fila_baja = df[df["Producto_Display"] == prod_a_borrar_display]
+                if not fila_baja.empty and "Nombre" in fila_baja.columns:
+                    nombre_baja_real = fila_baja["Nombre"].values[0]
+
                 motivo_baja = st.selectbox(
                     "Motivo", ["Venta Realizada", "Merma / Daño", "Ajuste de Inventario"]
                 )
@@ -268,7 +298,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
 
                 if btn_eliminar:
                     payload = {
-                        "producto": prod_a_borrar,
+                        "producto": nombre_baja_real,
                         "stock": -abs(cant_retiro),
                         "sucursal": sucursal_sel if sucursal_sel != "Todas" else "Alem",
                         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -277,7 +307,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                     res = requests.post(WEB_APP_URL, json=payload)
                     if res.status_code == 200:
                         st.cache_data.clear()
-                        st.success(f"¡Stock actualizado correctamente para '{prod_a_borrar}'!")
+                        st.success(f"¡Stock actualizado correctamente para '{prod_a_borrar_display}'!")
                         st.rerun()
                     else:
                         st.error("Error al procesar la solicitud.")
@@ -347,7 +377,7 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
                 mejor_pv = ventas_por_pv.loc[ventas_por_pv['Total'].idxmax()]['Punto de Venta']
                 st.success(f"🏆 El punto de venta con mayor salida es: **{mejor_pv}**")
 
-            st.markdown("### Data de Transacciones")
+            st.markdown("### Detalle de Transacciones")
             st.dataframe(df_ventas, use_container_width=True, hide_index=True)
 
 else:
