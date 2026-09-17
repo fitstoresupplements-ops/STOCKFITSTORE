@@ -626,7 +626,7 @@ if not df.empty and col_id_real and col_nombre_real:
                         except Exception as e:
                             st.error(f"Falla de conexión: {e}")
 # -------------------------------------------------------------------------
-    # 🔄 TRANSFERIR MERCADERÍA ENTRE SUCURSALES
+    # 🔄 TRANSFERIR MERCADERÍA ENTRE SUCURSALES (CORREGIDO)
     # -------------------------------------------------------------------------
     elif pestana == "🔄 Transferir Mercadería":
         st.subheader("Transferencia de Stock entre Puntos de Venta")
@@ -652,13 +652,12 @@ if not df.empty and col_id_real and col_nombre_real:
                     ["Alem", "San Javier", "Hulk Gym"],
                 )
             with col_t2:
-                # Filtrar para que destino no sea igual a origen visualmente (opcional)
                 suc_destino = st.selectbox(
                     "Sucursal Destino (Entra stock)",
                     ["San Javier", "Alem", "Hulk Gym"],
                 )
 
-            # Buscar ID y stock en la sucursal de origen seleccionada
+            # Búsqueda dinámica del ID y el stock real según la sucursal de origen elegida
             id_trans_real = ""
             stock_origen_disponible = 0
             nombre_prod_trans = ""
@@ -677,13 +676,13 @@ if not df.empty and col_id_real and col_nombre_real:
                         else ""
                     )
 
-                    # Determinar columna origen
+                    # Detectar exactamente la columna correspondiente al origen seleccionado
                     cols_df = df.columns.tolist()
                     col_orig_name = "Stock Total"
                     if suc_origen == "San Javier":
                         col_orig_name = next(
                             (c for c in cols_df if "javier" in c.lower()),
-                            "Stock Total",
+                            "San Javier",
                         )
                     elif suc_origen == "Hulk Gym":
                         col_orig_name = next(
@@ -692,12 +691,11 @@ if not df.empty and col_id_real and col_nombre_real:
                                 for c in cols_df
                                 if "hulk" in c.lower() or "gym" in c.lower()
                             ),
-                            "Stock Total",
+                            "Hulk Gym",
                         )
                     elif suc_origen == "Alem":
                         col_orig_name = next(
-                            (c for c in cols_df if "alem" in c.lower()),
-                            "Stock Total",
+                            (c for c in cols_df if "alem" in c.lower()), "Alem"
                         )
 
                     if col_orig_name in fila_t.columns:
@@ -705,6 +703,7 @@ if not df.empty and col_id_real and col_nombre_real:
                             limpiar_numero(fila_t[col_orig_name].values[0])
                         )
 
+            # Mensaje dinámico que cambia al cambiar de producto o de sucursal de origen
             st.info(
                 f"🆔 ID: **{id_trans_real}** | Stock disponible en **{suc_origen}**: **{stock_origen_disponible} unidades**"
             )
