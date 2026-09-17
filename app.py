@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide",
 )
 
-WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyIcWq9LQfQnMrQhNicCqQw6aJF1kCuRoCykr_KEOcVRySt40vEuD0F3znEezNllUWCGQ/exec"
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycby2PuAlGb7XBbgJaJi--4BlaSQt3tuX_3djBRRCuebCKMh1TCW6s6yN0C2Ubwjparv1Qw/exec"
 
 st.title("Fit Store Supplements — Control Total de Operaciones")
 st.markdown("---")
@@ -624,7 +624,137 @@ if not df.empty and col_id_real and col_nombre_real:
                                 )
                         except Exception as e:
                             st.error(f"Falla de conexión: {e}")
+# -------------------------------------------------------------------------
+    # 🔄 TRANSFERIR MERCADERÍA ENTRE SUCURSALES
+    # -------------------------------------------------------------------------
+    elif pestana == "🔄 Transferir Mercadería":
+        st.subheader("Transferencia de Stock entre Puntos de Venta")
+        st.write(
+            "Movete stock de una sucursal a otra de forma automática con validación de ID."
+        )
 
+        productos_lista_trans = (
+            df["Producto_Display"].tolist()
+            if "Producto_Display" in df.columns
+            else []
+        )
+
+        with st.form("form_transferencia"):
+            prod_trans_display = st.selectbox(
+                "Seleccionar Producto", productos_lista_trans
+            )
+
+            col_t1, col_t2 = st.columns(2)
+            with col_t1:
+                suc_origen = st.selectbox(
+                    "Sucursal Origen (Sale stock)",
+                    ["Alem", "San Javier", "Hulk Gym"],
+                )
+            with col_t2:
+                # Filtrar para que destino no sea igual a origen visualmente (opcional)
+                suc_destino = st.selectbox(
+                    "Sucursal Destino (Entra stock)",
+                    ["San Javier", "Alem", "Hulk Gym"],
+                )
+
+            # Buscar ID y stock en la sucursal de origen seleccionada
+            id_trans_real = ""
+            stock_origen_disponible = 0
+            nombre_prod_trans = ""
+
+            if prod_trans_display and not df.empty:
+                fila_t = df[df["Producto_Display"] == prod_trans_display]
+                if not fila_t.empty:
+                    id_trans_real = (
+                        str(fila_t["ID"].values[0]).strip()
+                        if "ID" in fila_t.columns
+                        else ""
+                    )
+                    nombre_prod_trans = (
+                        str(fila_t["Nombre"].values[0])
+                        if "Nombre" in fila_t.columns
+                        else ""
+                    )
+
+                    # Determinar columna origen
+                    cols_df = df.columns.tolist()
+                    col_orig_name = "Stock Total"
+                    if suc_origen == "San Javier":
+                        col_orig_name = next(
+                            (c for c in cols_df if "javier" in c.lower()),
+                            "Stock Total",
+                        )
+                    elif suc_origen == "Hulk Gym":
+                        col_orig_name = next(
+                            (
+                                c
+                                for c in cols_df
+                                if "hulk" in c.lower() or "gym" in c.lower()
+                            ),
+                            "Stock Total",
+                        )
+                    elif suc_origen == "Alem":
+                        col_orig_name = next(
+                            (c for c in cols_df if "alem" in c.lower()),
+                            "Stock Total",
+                        )
+
+                    if col_orig_name in fila_t.columns:
+                        stock_origen_disponible = int(
+                            limpiar_numero(fila_t[col_orig_name].values[0])
+                        )
+
+            st.info(
+                f"🆔 ID: **{id_trans_real}** | Stock disponible en **{suc_origen}**: **{stock_origen_disponible} unidades**"
+            )
+
+            cantidad_transferir = st.number_input(
+                "Cantidad a Transferir",
+                min_value=1,
+                max_value=max(1, stock_origen_disponible),
+                step=1,
+            )
+            btn_ejecutar_trans = st.form_submit_button(
+                "Confirmar Transferencia"
+            )
+
+            if btn_ejecutar_trans:
+                if suc_origen == suc_destino:
+                    st.error(
+                        "La sucursal de origen y destino no pueden ser la misma."
+                    )
+                elif stock_origen_disponible < cantidad_transferir:
+                    st.error(
+                        f"No hay suficiente stock en {suc_origen} para realizar el traslado."
+                    )
+                else:
+                    payload = {
+                        "accion": "transferir",
+                        "id": id_trans_real,
+                        "origen": suc_origen,
+                        "destino": suc_destino,
+                        "cantidad": cantidad_transferir,
+                    }
+                    try:
+                        res = requests.post(WEB_APP_URL, json=payload)
+                        if res.status_code == 200:
+                            res_json = res.json()
+                            if res_json.get("status") == "success":
+                                st.cache_data.clear()
+                                st.success(
+                                    f"¡Transferencia exitosa! Se movieron {cantidad_transferir} unidades de {suc_origen} a {suc_destino}."
+                                )
+                                st.rerun()
+                            else:
+                                st.error(
+                                    f"Error del servidor: {res_json.get('message')}"
+                                )
+                        else:
+                            st.error(
+                                "Error de comunicación con Google Apps Script."
+                            )
+                    except Exception as e:
+                        st.error(f"Falla de conexión: {e}")
     # -------------------------------------------------------------------------
     # 4. ELIMINAR MERCADERÍA
     # -------------------------------------------------------------------------
