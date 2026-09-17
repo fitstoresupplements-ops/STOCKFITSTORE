@@ -10,7 +10,7 @@ st.set_page_config(
 )
 
 # Tu nueva URL oficial de Google Apps Script
-WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx7NklbgnGjsKpnqMBJF1vRXCMjoQjTLCYH1nCZJsHqsb9_Xucj-Jw4r0pYrB6dN1T3dQ/exec"
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwDC8L3PpwCogYkO4HtYYHhk6JJhY2qkmTEuLI-6ol_SWCXLphPa1Ot1XH9fXYnv6Gv9Q/exec"
 
 st.title("Fit Store Supplements — Control Total de Operaciones")
 st.markdown("---")
@@ -155,85 +155,96 @@ if not df.empty and any(col in df.columns for col in columnas_requeridas):
     # 2. REGISTRAR VENTA
     # -------------------------------------------------------------------------
     elif pestana == "🛒 Registrar Venta":
-        st.subheader("Registrar Venta y Descuento de Stock")
+      st.subheader("Registrar Venta y Descuento de Stock")
 
-        sucursal_venta = st.selectbox("Punto de Venta", ["Alem", "San Javier", "Hulk Gym"], key="venta_sucursal")
-        
-        productos_disponibles = df["Producto_Display"].tolist() if "Producto_Display" in df.columns else []
-        prod_seleccionado_display = st.selectbox("Producto (Marca - Nombre - Presentación - Sabor)", productos_disponibles, key="venta_producto")
+      sucursal_venta = st.selectbox("Punto de Venta", ["Alem", "San Javier", "Hulk Gym"], key="venta_sucursal")
+      
+      productos_disponibles = df["Producto_Display"].tolist() if "Producto_Display" in df.columns else []
+      prod_seleccionado_display = st.selectbox("Producto (Marca - Nombre - Presentación - Sabor)", productos_disponibles, key="venta_producto")
 
-        # Búsqueda flexible de la columna de la sucursal correspondiente
-        col_suc = "Stock Total"
-        columnas_disponibles = df.columns.tolist()
-        
-        if sucursal_venta == "San Javier":
-            posible_col = next((c for c in columnas_disponibles if "javier" in c.lower()), None)
-            col_suc = posible_col if posible_col else "Stock Total"
-        elif sucursal_venta == "Hulk Gym":
-            posible_col = next((c for c in columnas_disponibles if "hulk" in c.lower() or "gym" in c.lower()), None)
-            col_suc = posible_col if posible_col else "Stock Total"
-        elif sucursal_venta == "Alem":
-            posible_col = next((c for c in columnas_disponibles if "alem" in c.lower()), None)
-            col_suc = posible_col if posible_col else "Stock Total"
+      col_suc = "Stock Total"
+      columnas_disponibles = df.columns.tolist()
+      
+      if sucursal_venta == "San Javier":
+          col_suc = next((c for c in columnas_disponibles if "javier" in c.lower()), "San Javier")
+      elif sucursal_venta == "Hulk Gym":
+          col_suc = next((c for c in columnas_disponibles if "hulk" in c.lower() or "gym" in c.lower()), "Hulk Gym")
+      elif sucursal_venta == "Alem":
+          col_suc = next((c for c in columnas_disponibles if "alem" in c.lower()), "Alem")
 
-        stock_actual = 0
-        precio_base = 0.0
-        nombre_real_prod = ""
-        sabor_real_prod = ""
-        id_real_prod = ""
-        
-        if prod_seleccionado_display and not df.empty:
-            fila_prod = df[df["Producto_Display"] == prod_seleccionado_display]
-            if not fila_prod.empty:
-                nombre_real_prod = fila_prod["Nombre"].values[0] if "Nombre" in fila_prod.columns else ""
-                sabor_real_prod = fila_prod["Sabor"].values[0] if "Sabor" in fila_prod.columns else ""
-                id_real_prod = fila_prod["ID"].values[0] if "ID" in fila_prod.columns else ""
-                
-                if col_suc in fila_prod.columns:
-                    val_stock = fila_prod[col_suc].values[0]
-                    stock_actual = int(limpiar_numero(val_stock))
-                if "Precio Base" in fila_prod.columns:
-                    precio_base = float(limpiar_numero(fila_prod["Precio Base"].values[0]))
+      stock_actual = 0
+      precio_base = 0.0
+      id_real_prod = ""
+      nombre_real_prod = ""
+      sabor_real_prod = ""
+      
+      if prod_seleccionado_display and not df.empty:
+          fila_prod = df[df["Producto_Display"] == prod_seleccionado_display]
+          if not fila_prod.empty:
+              # CAPTURA CRUCIAL DEL ID ÚNICO
+              id_real_prod = str(fila_prod["ID"].values[0]).strip() if "ID" in fila_prod.columns else ""
+              nombre_real_prod = str(fila_prod["Nombre"].values[0]) if "Nombre" in fila_prod.columns else ""
+              sabor_real_prod = str(fila_prod["Sabor"].values[0]) if "Sabor" in fila_prod.columns else ""
+              
+              if col_suc in fila_prod.columns:
+                  stock_actual = int(limpiar_numero(fila_prod[col_suc].values[0]))
+              if "Precio Base" in fila_prod.columns:
+                  precio_base = float(limpiar_numero(fila_prod["Precio Base"].values[0]))
 
-        # Cálculo automático del precio de venta según la sucursal seleccionada
-        if sucursal_venta in ["Alem", "San Javier"]:
-            precio_sugerido = precio_base
-        else:  # Hulk Gym (Precio base dividido 0.9)
-            precio_sugerido = precio_base / 0.9 if 0.9 > 0 else precio_base
+      # Cálculo de precios según sucursal (ejemplo: recargo en Hulk Gym)
+      if sucursal_venta in ["Alem", "San Javier"]:
+          precio_sugerido = precio_base
+      else:
+          precio_sugerido = precio_base / 0.9 if 0.9 > 0 else precio_base
 
-        st.info(f"Stock disponible en {sucursal_venta}: {stock_actual} unidades | **Precio Unitario Automático: ${precio_sugerido:,.2f}**")
+      st.info(f"ID del producto: **{id_real_prod}** | Stock en {sucursal_venta}: **{stock_actual}** | **Precio: ${precio_sugerido:,.2f}**")
 
-        with st.form("form_venta_local"):
-            cant_venta = st.number_input("Cantidad a Vender", min_value=1, max_value=max(1, stock_actual), step=1)
-            btn_registrar_venta = st.form_submit_button("Confirmar y Descontar Stock")
+      with st.form("form_venta_local"):
+          cant_venta = st.number_input("Cantidad a Vender", min_value=1, max_value=max(1, stock_actual), step=1)
+          btn_registrar_venta = st.form_submit_button("Confirmar y Descontar Stock")
 
-            if btn_registrar_venta:
-                                if cant_venta > stock_actual:
-                                    st.error("No hay suficiente stock para realizar la venta en esta sucursal.")
-                                else:
-                                    total_venta = cant_venta * precio_sugerido
+          if btn_registrar_venta:
+              if not id_real_prod:
+                  st.error("El producto seleccionado no cuenta con un ID válido.")
+              elif cant_venta > stock_actual:
+                  st.error("No hay suficiente stock para realizar la venta en esta sucursal.")
+              else:
+                  total_venta = cant_venta * precio_sugerido
 
-                                    payload = {
-                                        "accion": "descontar",
-                                        "id": str(id_real_prod),
-                                        "producto": str(nombre_real_prod),
-                                        "sabor": str(sabor_real_prod),
-                                        "stock": -abs(cant_venta),
-                                        "sucursal": sucursal_venta,
-                                        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                    }
-                                    try:
-                                        res = requests.post(WEB_APP_URL, json=payload)
-                                        st.write("Código de estado:", res.status_code)
-                                        st.write("Respuesta exacta de Google:", res.text)
+                  # PAYLOAD DIRECTO POR ID
+                  payload = {
+                      "accion": "descontar",
+                      "id": id_real_prod,
+                      "stock": -abs(cant_venta),
+                      "sucursal": sucursal_venta,
+                      "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                  }
+                  try:
+                      res = requests.post(WEB_APP_URL, json=payload)
+                      if res.status_code == 200:
+                          res_json = res.json()
+                          if res_json.get("status") == "success":
+                              if 'ventas' not in st.session_state or not isinstance(st.session_state['ventas'], pd.DataFrame):
+                                  st.session_state['ventas'] = pd.DataFrame(columns=["Fecha", "Punto de Venta", "Producto", "Sabor", "Cantidad", "Total"])
 
-                                        if res.status_code == 200:
-                                            st.cache_data.clear()
-                                            st.success(f"¡Venta registrada con éxito!")
-                                        else:
-                                            st.error("Error al sincronizar con Google Sheets.")
-                                    except Exception as e:
-                                        st.error(f"Falla de conexión: {e}")
+                              nueva_venta = pd.DataFrame([{
+                                  "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                  "Punto de Venta": sucursal_venta,
+                                  "Producto": nombre_real_prod,
+                                  "Sabor": sabor_real_prod,
+                                  "Cantidad": cant_venta,
+                                  "Total": total_venta
+                              }])
+                              st.session_state['ventas'] = pd.concat([st.session_state['ventas'], nueva_venta], ignore_index=True)
+
+                              st.cache_data.clear()
+                              st.success(f"¡Venta registrada con éxito! Fila modificada en Sheets: {res_json.get('fila')}")
+                          else:
+                              st.error(f"Error desde el servidor: {res_json.get('message')}")
+                      else:
+                          st.error("Error de comunicación con Google Apps Script.")
+                  except Exception as e:
+                      st.error(f"Falla de conexión: {e}")
     # -------------------------------------------------------------------------
     # 3. REGISTRAR INGRESOS (NUEVO VS EXISTENTE)
     # -------------------------------------------------------------------------
