@@ -128,6 +128,7 @@ if not df.empty and col_id_real and col_nombre_real:
             "📦 Inventario General",
             "🛒 Registrar Venta",
             "📥 Registrar Ingresos",
+	    "🔄 Transferir Mercadería",
             "🗑️ Eliminar Mercadería",
             "✏️ Editar Precios / Stock",
             "📊 Estadísticas y Reportes",
