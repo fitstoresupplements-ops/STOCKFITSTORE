@@ -626,7 +626,7 @@ if not df.empty and col_id_real and col_nombre_real:
                         except Exception as e:
                             st.error(f"Falla de conexión: {e}")
 # -------------------------------------------------------------------------
-    # 🔄 TRANSFERIR MERCADERÍA ENTRE SUCURSALES (CORREGIDO)
+    # 🔄 TRANSFERIR MERCADERÍA ENTRE SUCURSALES (DINÁMICO)
     # -------------------------------------------------------------------------
     elif pestana == "🔄 Transferir Mercadería":
         st.subheader("Transferencia de Stock entre Puntos de Venta")
@@ -640,74 +640,77 @@ if not df.empty and col_id_real and col_nombre_real:
             else []
         )
 
-        with st.form("form_transferencia"):
-            prod_trans_display = st.selectbox(
-                "Seleccionar Producto", productos_lista_trans
+        # 1. SELECTORES FUERA DEL FORMULARIO (Para que actualicen la pantalla al instante)
+        prod_trans_display = st.selectbox(
+            "Seleccionar Producto", productos_lista_trans, key="trans_prod"
+        )
+
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            suc_origen = st.selectbox(
+                "Sucursal Origen (Sale stock)",
+                ["Alem", "San Javier", "Hulk Gym"],
+                key="trans_orig",
+            )
+        with col_t2:
+            suc_destino = st.selectbox(
+                "Sucursal Destino (Entra stock)",
+                ["San Javier", "Alem", "Hulk Gym"],
+                key="trans_dest",
             )
 
-            col_t1, col_t2 = st.columns(2)
-            with col_t1:
-                suc_origen = st.selectbox(
-                    "Sucursal Origen (Sale stock)",
-                    ["Alem", "San Javier", "Hulk Gym"],
+        # 2. CÁLCULO DINÁMICO EN TIEMPO REAL (Se actualiza inmediatamente al cambiar de opción)
+        id_trans_real = ""
+        stock_origen_disponible = 0
+        nombre_prod_trans = ""
+
+        if prod_trans_display and not df.empty:
+            fila_t = df[df["Producto_Display"] == prod_trans_display]
+            if not fila_t.empty:
+                id_trans_real = (
+                    str(fila_t["ID"].values[0]).strip()
+                    if "ID" in fila_t.columns
+                    else ""
                 )
-            with col_t2:
-                suc_destino = st.selectbox(
-                    "Sucursal Destino (Entra stock)",
-                    ["San Javier", "Alem", "Hulk Gym"],
+                nombre_prod_trans = (
+                    str(fila_t["Nombre"].values[0])
+                    if "Nombre" in fila_t.columns
+                    else ""
                 )
 
-            # Búsqueda dinámica del ID y el stock real según la sucursal de origen elegida
-            id_trans_real = ""
-            stock_origen_disponible = 0
-            nombre_prod_trans = ""
-
-            if prod_trans_display and not df.empty:
-                fila_t = df[df["Producto_Display"] == prod_trans_display]
-                if not fila_t.empty:
-                    id_trans_real = (
-                        str(fila_t["ID"].values[0]).strip()
-                        if "ID" in fila_t.columns
-                        else ""
+                cols_df = df.columns.tolist()
+                col_orig_name = "Stock Total"
+                if suc_origen == "San Javier":
+                    col_orig_name = next(
+                        (c for c in cols_df if "javier" in c.lower()),
+                        "Stock Total",
                     )
-                    nombre_prod_trans = (
-                        str(fila_t["Nombre"].values[0])
-                        if "Nombre" in fila_t.columns
-                        else ""
+                elif suc_origen == "Hulk Gym":
+                    col_orig_name = next(
+                        (
+                            c
+                            for c in cols_df
+                            if "hulk" in c.lower() or "gym" in c.lower()
+                        ),
+                        "Stock Total",
+                    )
+                elif suc_origen == "Alem":
+                    col_orig_name = next(
+                        (c for c in cols_df if "alem" in c.lower()), "Alem"
                     )
 
-                    # Detectar exactamente la columna correspondiente al origen seleccionado
-                    cols_df = df.columns.tolist()
-                    col_orig_name = "Stock Total"
-                    if suc_origen == "San Javier":
-                        col_orig_name = next(
-                            (c for c in cols_df if "javier" in c.lower()),
-                            "San Javier",
-                        )
-                    elif suc_origen == "Hulk Gym":
-                        col_orig_name = next(
-                            (
-                                c
-                                for c in cols_df
-                                if "hulk" in c.lower() or "gym" in c.lower()
-                            ),
-                            "Hulk Gym",
-                        )
-                    elif suc_origen == "Alem":
-                        col_orig_name = next(
-                            (c for c in cols_df if "alem" in c.lower()), "Alem"
-                        )
+                if col_orig_name in fila_t.columns:
+                    stock_origen_disponible = int(
+                        limpiar_numero(fila_t[col_orig_name].values[0])
+                    )
 
-                    if col_orig_name in fila_t.columns:
-                        stock_origen_disponible = int(
-                            limpiar_numero(fila_t[col_orig_name].values[0])
-                        )
+        # 3. EL MENSAJE AZUL AHORA SÍ CAMBIA EN TIEMPO REAL
+        st.info(
+            f"🆔 ID: **{id_trans_real}** | Stock disponible en **{suc_origen}**: **{stock_origen_disponible} unidades**"
+        )
 
-            # Mensaje dinámico que cambia al cambiar de producto o de sucursal de origen
-            st.info(
-                f"🆔 ID: **{id_trans_real}** | Stock disponible en **{suc_origen}**: **{stock_origen_disponible} unidades**"
-            )
-
+        # 4. FORMULARIO SOLO PARA EL BOTÓN Y LA CANTIDAD
+        with st.form("form_transferencia_accion"):
             cantidad_transferir = st.number_input(
                 "Cantidad a Transferir",
                 min_value=1,
