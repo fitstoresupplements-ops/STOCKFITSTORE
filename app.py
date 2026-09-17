@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide",
 )
 
-WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwDC8L3PpwCogYkO4HtYYHhk6JJhY2qkmTEuLI-6ol_SWCXLphPa1Ot1XH9fXYnv6Gv9Q/exec"
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyIcWq9LQfQnMrQhNicCqQw6aJF1kCuRoCykr_KEOcVRySt40vEuD0F3znEezNllUWCGQ/exec"
 
 st.title("Fit Store Supplements — Control Total de Operaciones")
 st.markdown("---")
